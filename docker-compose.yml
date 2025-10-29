@@ -24,9 +24,14 @@ services:
     container_name: authmansys_api
     restart: unless-stopped
     ports:
-      - "5000:80"
+      - "5001:80"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ASPNETCORE_HTTP_PORTS=80
+      - DOTNET_RUNNING_IN_CONTAINER=true
+      - DatabaseProvider=MySQL
+      - ConnectionStrings__MySqlConnection=Server=mysql;Port=3306;Database=AuthManSysDb;User=authuser;Password=P@ssw0rd123!;
     depends_on:
       mysql:
         condition: service_healthy

@@ -20,6 +20,11 @@ public class SecurityService : ISecurityService
 
     public string GenerateToken(string username, string email)
     {
+        if (string.IsNullOrEmpty(username))
+            throw new ArgumentException("Username cannot be null or empty", nameof(username));
+        if (string.IsNullOrEmpty(email))
+            throw new ArgumentException("Email cannot be null or empty", nameof(email));
+
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtSettings.SecretKey);
 

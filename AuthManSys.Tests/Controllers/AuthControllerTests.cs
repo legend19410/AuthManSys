@@ -1,143 +1,101 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using Moq;
+using MediatR;
 using AuthManSys.Api.Controllers;
 using AuthManSys.Api.Models;
-using AuthManSys.Api.Services;
+using AuthManSys.Application.Security.Commands.Login;
+using AuthManSys.Application.Common.Models.Responses;
+using AuthManSys.Application.Common.Exceptions;
 
 namespace AuthManSys.Tests.Controllers;
 
 public class AuthControllerTests
 {
-    private readonly Mock<IJwtTokenService> _mockJwtService;
+    private readonly Mock<IMediator> _mockMediator;
     private readonly AuthController _controller;
-    private readonly DefaultCredentials _defaultCredentials;
 
     public AuthControllerTests()
     {
-        _mockJwtService = new Mock<IJwtTokenService>();
+        _mockMediator = new Mock<IMediator>();
+        _controller = new AuthController(_mockMediator.Object);
+    }
 
-        _defaultCredentials = new DefaultCredentials
+    [Fact]
+    public async Task Login_WithValidCredentials_ReturnsTokenResponse()
+    {
+        // Arrange
+        var request = new LoginRequest
         {
             Username = "admin",
-            Password = "Admin123!",
-            Email = "admin@example.com",
-            Role = "Administrator"
+            Password = "Admin123!"
         };
 
-        var credentialsOptions = Options.Create(_defaultCredentials);
-        _controller = new AuthController(_mockJwtService.Object, credentialsOptions);
-
-    }
-
-    [Fact]
-    public void Login_WithValidCredentials_ReturnsTokenResponse()
-    {
-        // Arrange
-        var request = new LoginRequest
-        {
-            Username = _defaultCredentials.Username,
-            Password = _defaultCredentials.Password
-        };
-
-        var expectedAuthResponse = new AuthResponse
+        var expectedLoginResponse = new LoginResponse
         {
             Token = "mock.jwt.token",
-            Username = _defaultCredentials.Username,
-            Email = _defaultCredentials.Email,
-            ExpiresAt = DateTime.UtcNow.AddHours(1)
+            Username = "admin",
+            Email = "admin@example.com",
+            Roles = new List<string> { "Administrator" }
         };
 
-        _mockJwtService.Setup(x => x.CreateAuthResponse(_defaultCredentials.Username, _defaultCredentials.Email, _defaultCredentials.Role))
-                      .Returns(expectedAuthResponse);
+        _mockMediator.Setup(x => x.Send(It.IsAny<LoginCommand>(), default))
+                    .ReturnsAsync(expectedLoginResponse);
 
         // Act
-        var result = _controller.Login(request);
+        var result = await _controller.Login(request);
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<AuthResponse>>(result);
+        var actionResult = Assert.IsType<ActionResult<LoginResponse>>(result);
         var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
-        var response = Assert.IsType<AuthResponse>(okResult.Value);
-        
-        Assert.Equal(expectedAuthResponse.Token, response.Token);
-        Assert.Equal(_defaultCredentials.Username, response.Username);
-        Assert.Equal(_defaultCredentials.Email, response.Email);
+        var response = Assert.IsType<LoginResponse>(okResult.Value);
+
+        Assert.Equal(expectedLoginResponse.Token, response.Token);
+        Assert.Equal(expectedLoginResponse.Username, response.Username);
+        Assert.Equal(expectedLoginResponse.Email, response.Email);
     }
 
     [Fact]
-    public void Login_WithEmptyUsername_ReturnsBadRequest()
+    public async Task Login_WithInvalidCredentials_ReturnsUnauthorized()
     {
         // Arrange
         var request = new LoginRequest
         {
-            Username = "",
-            Password = "Password123!"
+            Username = "invalid",
+            Password = "invalid"
         };
 
-        // Act
-        var result = _controller.Login(request);
-
-        // Assert
-        var actionResult = Assert.IsType<ActionResult<AuthResponse>>(result);
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-        Assert.Equal("Username and password are required", badRequestResult.Value);
-    }
-
-    [Fact]
-    public void Login_WithInvalidUsername_ReturnsUnauthorized()
-    {
-        // Arrange
-        var request = new LoginRequest
-        {
-            Username = "nonexistentuser",
-            Password = "Password123!"
-        };
+        _mockMediator.Setup(x => x.Send(It.IsAny<LoginCommand>(), default))
+                    .ThrowsAsync(new UnauthorizedException("Invalid credentials"));
 
         // Act
-        var result = _controller.Login(request);
+        var result = await _controller.Login(request);
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<AuthResponse>>(result);
+        var actionResult = Assert.IsType<ActionResult<LoginResponse>>(result);
         var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(actionResult.Result);
         Assert.Equal("Invalid credentials", unauthorizedResult.Value);
     }
 
     [Fact]
-    public void Login_WithInvalidPassword_ReturnsUnauthorized()
+    public async Task Login_WithException_ReturnsBadRequest()
     {
         // Arrange
         var request = new LoginRequest
         {
-            Username = _defaultCredentials.Username,
-            Password = "WrongPassword"
+            Username = "test",
+            Password = "test"
         };
 
-        // Act
-        var result = _controller.Login(request);
-
-        // Assert
-        var actionResult = Assert.IsType<ActionResult<AuthResponse>>(result);
-        var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(actionResult.Result);
-        Assert.Equal("Invalid credentials", unauthorizedResult.Value);
-    }
-
-    [Fact]
-    public void Login_WithEmptyPassword_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new LoginRequest
-        {
-            Username = _defaultCredentials.Username,
-            Password = ""
-        };
+        _mockMediator.Setup(x => x.Send(It.IsAny<LoginCommand>(), default))
+                    .ThrowsAsync(new Exception("Something went wrong"));
 
         // Act
-        var result = _controller.Login(request);
+        var result = await _controller.Login(request);
 
         // Assert
-        var actionResult = Assert.IsType<ActionResult<AuthResponse>>(result);
+        var actionResult = Assert.IsType<ActionResult<LoginResponse>>(result);
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(actionResult.Result);
-        Assert.Equal("Username and password are required", badRequestResult.Value);
+        Assert.Contains("Login failed", badRequestResult.Value?.ToString());
     }
 
 

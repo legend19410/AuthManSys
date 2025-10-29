@@ -123,8 +123,11 @@ if (app.Environment.IsDevelopment())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await IdentitySeeder.SeedAsync(context, userManager, roleManager);
 
-    // Interactive IdentityManager testing
-    await InteractiveIdentityTests.RunInteractiveTest(scope);
+    // Interactive IdentityManager testing (only when not in container)
+    if (!Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        await InteractiveIdentityTests.RunInteractiveTest(scope);
+    }
 }
 
 // Configure the HTTP request pipeline.
@@ -138,7 +141,11 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection when not in Docker container
+if (!app.Environment.IsEnvironment("Docker") && !Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using AuthManSys.Api.Models;
+using AuthManSys.Api.Models.Responses;
 using AuthManSys.Infrastructure.Persistence;
 
 namespace AuthManSys.Tests.Integration;
