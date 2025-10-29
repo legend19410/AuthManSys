@@ -28,6 +28,14 @@ public static class ServiceCollectionExtensions
                     b => b.MigrationsAssembly(typeof(AuthManSysDbContext).Assembly.FullName)
                 );
             }
+            else if (databaseProvider.ToUpper() == "MYSQL")
+            {
+                options.UseMySql(
+                    configuration.GetConnectionString("MySqlConnection"),
+                    ServerVersion.AutoDetect(configuration.GetConnectionString("MySqlConnection")),
+                    b => b.MigrationsAssembly(typeof(AuthManSysDbContext).Assembly.FullName)
+                );
+            }
             else
             {
                 options.UseSqlite(

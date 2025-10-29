@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
-using AuthManSys.Infrastructure.Persistence;
 
 namespace AuthManSys.Infrastructure.Persistence;
 
@@ -26,6 +25,11 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AuthManSys
         {
             var sqlServerConnectionString = configuration.GetConnectionString("SqlServerConnection");
             optionsBuilder.UseSqlServer(sqlServerConnectionString);
+        }
+        else if (databaseProvider.ToUpper() == "MYSQL")
+        {
+            var mySqlConnectionString = configuration.GetConnectionString("MySqlConnection");
+            optionsBuilder.UseMySql(mySqlConnectionString, ServerVersion.AutoDetect(mySqlConnectionString));
         }
         else
         {
