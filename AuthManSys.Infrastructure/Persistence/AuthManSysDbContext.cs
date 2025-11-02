@@ -19,6 +19,7 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
         var user = await Users
             .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
+
         if (user == null)
         {
             return null;

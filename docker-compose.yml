@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   mysql:
     image: mysql:8.0
@@ -9,7 +11,7 @@ services:
       MYSQL_USER: authuser
       MYSQL_PASSWORD: P@ssw0rd123!
     ports:
-      - 3307:3306
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
@@ -21,21 +23,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: debug   # Use debug stage
     container_name: authmansys_api
     restart: unless-stopped
     ports:
-      - "5001:80"
+      - "8081:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:80
-      - ASPNETCORE_HTTP_PORTS=80
       - DOTNET_RUNNING_IN_CONTAINER=true
+      - DOTNET_USE_POLLING_FILE_WATCHER=1
       - DatabaseProvider=MySQL
       - ConnectionStrings__MySqlConnection=Server=mysql;Port=3306;Database=AuthManSysDb;User=authuser;Password=P@ssw0rd123!;
+    volumes:
+      - .:/src       # Mount source for hot reload
     depends_on:
       mysql:
         condition: service_healthy
 
 volumes:
   mysql_data:
-
