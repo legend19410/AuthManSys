@@ -2,10 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Infrastructure.Persistence;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Infrastructure.Identity;
+using AuthManSys.Infrastructure.Authorization;
+using AuthManSys.Infrastructure.Services;
 
 namespace AuthManSys.Infrastructure.DependencyInjection;
 
@@ -72,7 +75,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IdentityExtension>();
         services.AddScoped<IIdentityExtension, IdentityExtension>();
 
-        // Add other infrastructure services
+        // Add Permission Service
+        services.AddScoped<IPermissionService, PermissionService>();
+
+        // Add Authorization components
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
+        // Add Memory Cache for permission caching
+        services.AddMemoryCache();
 
         return services;
     }

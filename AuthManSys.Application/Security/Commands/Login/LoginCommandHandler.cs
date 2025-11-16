@@ -10,16 +10,13 @@ namespace AuthManSys.Application.Security.Commands.Login;
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
     private readonly IIdentityExtension _identityExtension;
-    private readonly ISecurityService _securityService;
 
 
     public LoginCommandHandler(
-        IIdentityExtension identityExtension,
-        ISecurityService securityService
+        IIdentityExtension identityExtension
     )
     {
         _identityExtension = identityExtension;
-        _securityService = securityService;
     }
 
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -50,7 +47,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         var role = roles.FirstOrDefault() ?? "User";
 
         //generate token
-        var token = _securityService.GenerateToken(user.UserName, user.Email);
+        var token = _identityExtension.GenerateToken(user.UserName, user.Email, user.Id);
 
         // Create authentication response
         var authResponse = new LoginResponse

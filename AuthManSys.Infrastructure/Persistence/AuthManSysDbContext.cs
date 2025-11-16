@@ -13,31 +13,41 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
     }
 
     public override DbSet<ApplicationUser> Users { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
+    public DbSet<RolePermission> RolePermissions { get; set; }
 
     public async Task<UserInformationResponse?> GetUserInformationAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await Users
             .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
-
         if (user == null)
         {
             return null;
         }
 
-        // Get user roles from Identity
-        var userRoles = await UserRoles
-            .Where(ur => ur.UserId == user.Id)
-            .Join(Roles,
-                ur => ur.RoleId,
-                r => r.Id,
-                (ur, r) => new UserRoleDto(
-                    int.Parse(r.Id),
-                    r.Name!,
-                    r.Name!,
-                    DateTime.UtcNow
-                ))
-            .ToListAsync(cancellationToken);
+        // Get user roles from Identity framework using the proper DbSets
+        var userRoleQuery = from ur in Set<Microsoft.AspNetCore.Identity.IdentityUserRole<string>>()
+                           join r in Set<Microsoft.AspNetCore.Identity.IdentityRole>() on ur.RoleId equals r.Id
+                           where ur.UserId == user.Id
+                           select new { RoleId = r.Id, RoleName = r.Name };
+
+        var userRoleData = await userRoleQuery.ToListAsync(cancellationToken);
+
+        var userRoles = userRoleData.Select(rd => new UserRoleDto(
+            Math.Abs(rd.RoleId.GetHashCode()), // Convert GUID to positive integer in memory
+            rd.RoleName ?? "Unknown",
+            rd.RoleName ?? "Unknown", // Using role name as description
+            DateTime.UtcNow // Role assignment date - not tracked by default Identity
+        )).ToList();
+
+        // Use LastPasswordChangedDate as a proxy for creation date, or a reasonable default
+        DateTime createdAt = user.LastPasswordChangedDate != default(DateTime)
+            ? user.LastPasswordChangedDate
+            : DateTime.UtcNow.AddDays(-30); // Default fallback if not set
+
+        // IsActive: user is active if not locked out
+        bool isActive = !user.LockoutEnabled || user.LockoutEnd == null || user.LockoutEnd <= DateTimeOffset.UtcNow;
 
         return new UserInformationResponse(
             user.UserId,
@@ -45,9 +55,9 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
             user.Email ?? string.Empty,
             user.FirstName,
             user.LastName,
-            !user.LockoutEnabled || user.LockoutEnd == null || user.LockoutEnd <= DateTimeOffset.UtcNow,
-            DateTime.UtcNow, // CreatedAt - Identity doesn't have this by default
-            DateTime.UtcNow, // LastLoginAt - would need custom tracking
+            isActive,
+            createdAt,
+            null, // LastLoginAt - would need custom tracking, not available in default Identity
             userRoles.AsReadOnly()
         );
     }
@@ -56,7 +66,47 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configure entity relationships and constraints here if needed
-      
+        // Configure ApplicationUser entity
+        modelBuilder.Entity<ApplicationUser>(entity =>
+        {
+            // Configure UserId as auto-increment identity column
+            entity.Property(e => e.UserId)
+                .ValueGeneratedOnAdd()
+                .UseIdentityColumn();
+
+            // Ensure UserId is unique
+            entity.HasIndex(e => e.UserId)
+                .IsUnique();
+        });
+
+        // Configure Permission entity
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Category).HasMaxLength(100);
+        });
+
+        // Configure RolePermission entity
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+
+            // Unique constraint: one permission per role
+            entity.HasIndex(e => new { e.RoleId, e.PermissionId }).IsUnique();
+
+            // Foreign key relationships
+            entity.HasOne(e => e.Role)
+                .WithMany()
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(e => e.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

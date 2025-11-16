@@ -11,32 +11,32 @@ This project supports both SQLite and SQL Server databases. You can switch betwe
 - Database file is created automatically in the API project directory
 - Set `"DatabaseProvider": "SQLite"` in appsettings.json
 
-### Option 2: SQL Server with Docker
+### Option 2: MySQL with Docker
 - Requires Docker to be installed on your system
-- Run SQL Server in a Docker container
-- Set `"DatabaseProvider": "SqlServer"` in appsettings.json
+- Run MySQL in a Docker container
+- Set `"DatabaseProvider": "MySQL"` in appsettings.json
 
-## Getting Started with SQL Server
+## Getting Started with MySQL
 
-1. **Start SQL Server Container:**
+1. **Start MySQL Container:**
    ```bash
    # From the project root directory
-   docker-compose up -d
+   docker compose up --build -d
    ```
 
 2. **Change Database Provider:**
    Update `appsettings.json` or `appsettings.Development.json`:
    ```json
    {
-     "DatabaseProvider": "SqlServer"
+     "DatabaseProvider": "MySQL"
    }
    ```
 
-3. **Create SQL Server Migration:**
+3. **Create MySQL Migration:**
    ```bash
    # From the API project directory
    cd AuthManSys.Api
-   dotnet ef migrations add InitialCreate_SqlServer --project ../AuthManSys.Infrastructure
+   dotnet ef migrations add InitialCreate_MySQL --project ../AuthManSys.Infrastructure
    ```
 
 4. **Update Database:**
@@ -82,48 +82,201 @@ This project supports both SQLite and SQL Server databases. You can switch betwe
 
 ### Connection Strings
 - **SQLite**: `"Data Source=AuthManSysDb.sqlite"`
-- **SQL Server**: `"Server=localhost,1433;Database=AuthManSysDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=true;MultipleActiveResultSets=true"`
+- **MySQL**: `"Server=localhost;Port=3307;Database=AuthManSysDb;User=authuser;Password=P@ssw0rd123!;"`
 
 ### Database Provider Setting
 Set in appsettings.json:
 ```json
 {
-  "DatabaseProvider": "SQLite"  // or "SqlServer"
+  "DatabaseProvider": "SQLite"  // or "MySQL"
 }
 ```
 
 ## Docker Compose Services
 
 The `docker-compose.yml` file includes:
-- **SQL Server 2022 Express** container
-- **Port**: 1433 (mapped to host)
-- **SA Password**: `YourStrong!Passw0rd`
-- **Persistent Volume**: `sqlserver_data`
+- **MySQL 8.0** container
+- **Port**: 3307 (mapped to host port 3307, container port 3306)
+- **Database**: AuthManSysDb
+- **User**: authuser
+- **Password**: P@ssw0rd123!
+- **Persistent Volume**: `mysql_data`
+- **AuthManSys API** container
+- **Port**: 8081 (mapped to host port 8081, container port 8080)
 
 ## Commands
 
-### Start SQL Server Container
+### Start All Containers
 ```bash
-docker-compose up -d
+docker compose up --build -d
 ```
 
-### Stop SQL Server Container
+### Stop All Containers
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### View Container Logs
 ```bash
-docker-compose logs sqlserver
+# View API logs
+docker compose logs authman-api
+
+# View MySQL logs
+docker compose logs mysql
 ```
+
+### Connect to MySQL Database from Terminal
+
+You can connect to the MySQL database running inside the Docker container in several ways:
+
+#### Option 1: Using Docker Exec (Recommended)
+```bash
+# Connect to MySQL container and open MySQL shell
+docker exec -it authmansys_mysql mysql -u authuser -p
+
+# When prompted, enter password: P@ssw0rd123!
+# Then you can run SQL commands like:
+# USE AuthManSysDb;
+# SHOW TABLES;
+# SELECT * FROM Users;
+```
+
+#### Option 2: Using MySQL Client from Host
+If you have MySQL client installed on your host machine:
+```bash
+mysql -h localhost -P 3307 -u authuser -p
+# Enter password when prompted: P@ssw0rd123!
+```
+
+#### Option 3: Using Docker Run (One-time connection)
+```bash
+docker run -it --rm --network authmansys_default mysql:8.0 mysql -h mysql -u authuser -p
+# Enter password when prompted: P@ssw0rd123!
+```
+
+### Database Connection Details
+- **Host**: localhost (when connecting from host machine)
+- **Port**: 3307 (host machine port)
+- **Database**: AuthManSysDb
+- **Username**: authuser
+- **Password**: P@ssw0rd123!
 
 ### Remove Container and Data
 ```bash
-docker-compose down -v
+docker compose down -v
+```
+
+## Database Management with Console App
+
+You can manage the database in the Docker container using the console app from your terminal:
+
+### Database Seeding Commands
+
+#### Check Database Status
+```bash
+# From project root directory
+cd AuthManSys.Console
+dotnet run -- db status
+```
+
+#### Run Database Migrations
+```bash
+# Apply any pending migrations to the database
+cd AuthManSys.Console
+dotnet run -- db migrate
+```
+
+#### Seed Database with Initial Data
+```bash
+# Add default roles, admin user, and sample data
+cd AuthManSys.Console
+dotnet run -- db seed
+```
+
+#### Reset and Reseed Database
+```bash
+# ⚠️ WARNING: This deletes ALL data and reseeds
+cd AuthManSys.Console
+dotnet run -- db reset
+```
+
+### Running Console Commands from Docker Container
+
+You can also run the console app commands directly in the Docker environment:
+
+#### Option 1: Using Docker Exec (Recommended)
+```bash
+# Execute console commands inside the running API container
+docker exec -it authmansys_api dotnet run --project AuthManSys.Console -- db status
+docker exec -it authmansys_api dotnet run --project AuthManSys.Console -- db seed
+docker exec -it authmansys_api dotnet run --project AuthManSys.Console -- db reset
+```
+
+#### Option 2: Temporary Container with Same Network
+```bash
+# Run console commands using temporary container with same network
+docker run --rm -it \
+  --network authmansys_default \
+  -v $(pwd):/src \
+  -w /src \
+  mcr.microsoft.com/dotnet/sdk:9.0 \
+  dotnet run --project AuthManSys.Console -- db status
+```
+
+### Environment Variables for Docker Commands
+
+If running console commands in Docker, you may need to set environment variables:
+```bash
+# Set MySQL connection for Docker environment
+docker exec -it authmansys_api \
+  env ConnectionStrings__MySqlConnection="Server=mysql;Port=3306;Database=AuthManSysDb;User=authuser;Password=P@ssw0rd123!;" \
+  dotnet run --project AuthManSys.Console -- db seed
+```
+
+### Available Console Commands
+
+| Command | Description |
+|---------|-------------|
+| `db status` | Check database connection and migration status |
+| `db migrate` | Apply pending database migrations |
+| `db seed` | Seed database with initial data (roles, admin user) |
+| `db reset` | **⚠️ Delete all data and reseed database** |
+| `user list` | List all users in the system |
+| `auth login` | Test authentication functionality |
+| `menu` | Start interactive console menu |
+
+### Quick Reference - Common Commands
+
+```bash
+# Check if containers are running
+docker compose ps
+
+# Start containers
+docker compose up --build -d
+
+# Check database status
+dotnet run -- db status
+
+# Seed database with initial data
+dotnet run -- db seed
+
+# Reset database (delete all data and reseed)
+dotnet run -- db reset
+
+# Connect to MySQL shell
+docker exec -it authmansys_mysql mysql -u authuser -p
+# Password: P@ssw0rd123!
+
+# View API logs
+docker compose logs authman-api
+
+# Stop containers
+docker compose down
 ```
 
 ## Development
 
 - The project automatically switches database providers based on the `DatabaseProvider` setting
-- Both SQLite and SQL Server use the same Entity Framework models and migrations
-- SQL-specific syntax is handled automatically (e.g., `GETUTCDATE()` vs `datetime('now')`)
+- Both SQLite and MySQL use the same Entity Framework models and migrations
+- Database-specific syntax is handled automatically (e.g., `GETUTCDATE()` vs `datetime('now')`)
+- **UserIds**: The `UserId` column in `AspNetUsers` table is configured for auto-increment starting from 1

@@ -3,7 +3,13 @@ using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using AuthManSys.Application.Common.Models;
+
 
 namespace AuthManSys.Infrastructure.Identity
 {
@@ -11,18 +17,23 @@ namespace AuthManSys.Infrastructure.Identity
     {
         private readonly UserManager<ApplicationUser> userManager;
         private readonly SignInManager<ApplicationUser> signInManager;
+        private readonly JwtSettings jwtSettings;
+
 
         public IdentityExtension(
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager
+            SignInManager<ApplicationUser> signInManager,
+            IOptions<JwtSettings> jwtSettings
         )
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
+            this.jwtSettings = jwtSettings.Value;
+
         
         }
 
-          public async Task<ApplicationUser?> FindByUserNameAsync(string userName)
+        public async Task<ApplicationUser?> FindByUserNameAsync(string userName)
         {
             var user = await userManager.FindByNameAsync(userName);
 
@@ -183,6 +194,44 @@ namespace AuthManSys.Infrastructure.Identity
             var result = await userManager.IsEmailConfirmedAsync(user);
             return result;
         }
+
+
+
+    public string GenerateToken(string username, string email, string userId)
+    {
+        if (string.IsNullOrEmpty(username))
+            throw new ArgumentException("Username cannot be null or empty", nameof(username));
+        if (string.IsNullOrEmpty(email))
+            throw new ArgumentException("Email cannot be null or empty", nameof(email));
+        if (string.IsNullOrEmpty(userId))
+            throw new ArgumentException("User ID cannot be null or empty", nameof(userId));
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.ASCII.GetBytes(this.jwtSettings.SecretKey);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId),
+            new Claim(ClaimTypes.Name, username),
+            new Claim(ClaimTypes.Email, email),
+            new Claim("username", username),
+            new Claim("email", email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+        };
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = DateTime.UtcNow.AddMinutes(this.jwtSettings.ExpirationInMinutes),
+            Issuer = this.jwtSettings.Issuer,
+            Audience = this.jwtSettings.Audience,
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        return tokenHandler.WriteToken(token);
+    }
 
     }
 }

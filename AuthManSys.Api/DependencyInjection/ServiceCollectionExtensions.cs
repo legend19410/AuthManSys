@@ -12,6 +12,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
         // JWT service is now registered in ApplicationServices
+        // Add services to the container.
+        
+        services.AddControllers();
+        services.AddEndpointsApiExplorer();
 
         // Configure JWT Authentication
         var jwtSettings = configuration.GetSection("JwtSettings").Get<JwtSettings>();
@@ -62,6 +66,56 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddAuthorization();
+
+        // Configure CORS
+        var corsSettings = configuration.GetSection("CorsSettings").Get<CorsSettings>();
+        services.AddCors(options =>
+        {
+            options.AddPolicy(corsSettings?.PolicyName ?? "DefaultCorsPolicy", policy =>
+            {
+                if (corsSettings?.AllowAnyOrigin == true)
+                {
+                    policy.AllowAnyOrigin();
+                }
+                else if (corsSettings?.AllowedOrigins?.Length > 0)
+                {
+                    policy.WithOrigins(corsSettings.AllowedOrigins);
+                }
+
+                if (corsSettings?.AllowAnyMethod == true)
+                {
+                    policy.AllowAnyMethod();
+                }
+                else if (corsSettings?.AllowedMethods?.Length > 0)
+                {
+                    policy.WithMethods(corsSettings.AllowedMethods);
+                }
+
+                if (corsSettings?.AllowAnyHeader == true)
+                {
+                    policy.AllowAnyHeader();
+                }
+                else if (corsSettings?.AllowedHeaders?.Length > 0)
+                {
+                    policy.WithHeaders(corsSettings.AllowedHeaders);
+                }
+
+                if (corsSettings?.ExposedHeaders?.Length > 0)
+                {
+                    policy.WithExposedHeaders(corsSettings.ExposedHeaders);
+                }
+
+                if (corsSettings?.AllowCredentials == true)
+                {
+                    policy.AllowCredentials();
+                }
+
+                if (corsSettings?.PreflightMaxAge > 0)
+                {
+                    policy.SetPreflightMaxAge(TimeSpan.FromSeconds(corsSettings.PreflightMaxAge));
+                }
+            });
+        });
 
         services.AddSwaggerGen(c =>
         {

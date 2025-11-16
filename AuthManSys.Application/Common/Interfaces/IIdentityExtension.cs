@@ -8,6 +8,7 @@ public interface IIdentityExtension
     Task<bool> IsEmailConfirmedAsync(string userName);
     Task<bool> CheckPasswordAsync(ApplicationUser applicationUser, string password);
     Task<IList<string>> GetUserRolesAsync(ApplicationUser user);
+    string GenerateToken(string username, string email, string userId);
 
 
 }

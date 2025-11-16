@@ -58,8 +58,8 @@ public static class IdentitySeeder
                 PasswordResetToken = string.Empty,
                 RequestVerificationToken = string.Empty,
                 TermsConditionsAccepted = true,
-                LastPasswordChangedDate = DateTime.UtcNow,
-                UserId = 0 // Will be set after custom user creation
+                LastPasswordChangedDate = DateTime.UtcNow
+                // UserId will be auto-assigned by database
             };
 
             var result = await userManager.CreateAsync(user, userData.Password);
@@ -75,6 +75,10 @@ public static class IdentitySeeder
         }
 
         // Save changes to the database
-        await context.SaveChangesAsync();}
+        await context.SaveChangesAsync();
+
+        // Seed permissions and role-permission mappings
+        await PermissionSeeder.SeedAsync(context, roleManager);
+    }
 
 }

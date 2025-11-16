@@ -8,6 +8,7 @@ WORKDIR /src
 COPY AuthManSys.sln ./
 COPY AuthManSys.Api/AuthManSys.Api.csproj AuthManSys.Api/
 COPY AuthManSys.Application/AuthManSys.Application.csproj AuthManSys.Application/
+COPY AuthManSys.Console/AuthManSys.Console.csproj AuthManSys.Console/
 COPY AuthManSys.Domain/AuthManSys.Domain.csproj AuthManSys.Domain/
 COPY AuthManSys.Infrastructure/AuthManSys.Infrastructure.csproj AuthManSys.Infrastructure/
 COPY AuthManSys.Tests/AuthManSys.Tests.csproj AuthManSys.Tests/

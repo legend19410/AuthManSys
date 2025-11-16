@@ -10,19 +10,12 @@ using AuthManSys.Api.ConsoleTest;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure JWT settings
-//builder.Services.Configure<AuthManSys.Api.Models.JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services.Configure<DefaultCredentials>(builder.Configuration.GetSection("DefaultCredentials"));
-
 // Add Infrastructure services (DbContext, repositories, etc.)
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Add Application services (MediatR, handlers, etc.)
 builder.Services.AddApplicationServices(builder.Configuration);
 
-// Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddApiServices(builder.Configuration);
 
@@ -36,6 +29,10 @@ if (app.Environment.IsDevelopment())
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     await IdentitySeeder.SeedAsync(context, userManager, roleManager);
+
+    // Seed permissions and role-permission mappings
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await AuthManSys.Infrastructure.Persistence.PermissionSeeder.SeedAsync(context, roleManager, logger);
 
     // Interactive IdentityManager testing (only when not in container)
     if (!Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
@@ -60,6 +57,8 @@ if (!app.Environment.IsEnvironment("Docker") && !Environment.GetEnvironmentVaria
 {
     app.UseHttpsRedirection();
 }
+
+app.UseCors("AuthManSysCorsPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
