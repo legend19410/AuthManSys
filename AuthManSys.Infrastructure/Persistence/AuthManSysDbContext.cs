@@ -62,6 +62,96 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
         );
     }
 
+    public async Task<PagedResponse<UserInformationResponse>> GetAllUsersAsync(PagedRequest request, CancellationToken cancellationToken = default)
+    {
+        var query = Users.AsQueryable();
+
+        // Apply search filter
+        if (!string.IsNullOrEmpty(request.SearchTerm))
+        {
+            query = query.Where(u =>
+                u.UserName!.Contains(request.SearchTerm) ||
+                u.Email!.Contains(request.SearchTerm) ||
+                u.FirstName.Contains(request.SearchTerm) ||
+                u.LastName.Contains(request.SearchTerm));
+        }
+
+        // Apply sorting
+        switch (request.SortBy.ToLower())
+        {
+            case "username":
+                query = request.SortDescending ? query.OrderByDescending(u => u.UserName) : query.OrderBy(u => u.UserName);
+                break;
+            case "email":
+                query = request.SortDescending ? query.OrderByDescending(u => u.Email) : query.OrderBy(u => u.Email);
+                break;
+            case "firstname":
+                query = request.SortDescending ? query.OrderByDescending(u => u.FirstName) : query.OrderBy(u => u.FirstName);
+                break;
+            case "lastname":
+                query = request.SortDescending ? query.OrderByDescending(u => u.LastName) : query.OrderBy(u => u.LastName);
+                break;
+            default:
+                query = request.SortDescending ? query.OrderByDescending(u => u.UserId) : query.OrderBy(u => u.UserId);
+                break;
+        }
+
+        // Get total count
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        // Apply pagination
+        var users = await query
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync(cancellationToken);
+
+        // Convert to UserInformationResponse
+        var userResponses = new List<UserInformationResponse>();
+        foreach (var user in users)
+        {
+            // Get user roles
+            var userRoleQuery = from ur in Set<Microsoft.AspNetCore.Identity.IdentityUserRole<string>>()
+                               join r in Set<Microsoft.AspNetCore.Identity.IdentityRole>() on ur.RoleId equals r.Id
+                               where ur.UserId == user.Id
+                               select new { RoleId = r.Id, RoleName = r.Name };
+
+            var userRoleData = await userRoleQuery.ToListAsync(cancellationToken);
+
+            var userRoles = userRoleData.Select(rd => new UserRoleDto(
+                Math.Abs(rd.RoleId.GetHashCode()),
+                rd.RoleName ?? "Unknown",
+                rd.RoleName ?? "Unknown",
+                DateTime.UtcNow
+            )).ToList();
+
+            DateTime createdAt = user.LastPasswordChangedDate != default(DateTime)
+                ? user.LastPasswordChangedDate
+                : DateTime.UtcNow.AddDays(-30);
+
+            bool isActive = !user.LockoutEnabled || user.LockoutEnd == null || user.LockoutEnd <= DateTimeOffset.UtcNow;
+
+            userResponses.Add(new UserInformationResponse(
+                user.UserId,
+                user.UserName ?? string.Empty,
+                user.Email ?? string.Empty,
+                user.FirstName,
+                user.LastName,
+                isActive,
+                createdAt,
+                null,
+                userRoles.AsReadOnly()
+            ));
+        }
+
+        return new PagedResponse<UserInformationResponse>
+        {
+            Items = userResponses.AsReadOnly(),
+            TotalCount = totalCount,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize
+        };
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

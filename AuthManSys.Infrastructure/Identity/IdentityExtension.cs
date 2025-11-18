@@ -233,5 +233,44 @@ namespace AuthManSys.Infrastructure.Identity
         return tokenHandler.WriteToken(token);
     }
 
+    public async Task<ApplicationUser?> FindByEmailAsync(string email)
+    {
+        return await userManager.FindByEmailAsync(email);
     }
+
+    public async Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName)
+    {
+        var user = new ApplicationUser
+        {
+            UserName = username,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            EmailConfirmed = false, // Will need email confirmation
+            EmailConfirmationToken = string.Empty,
+            PasswordResetToken = string.Empty,
+            RequestVerificationToken = string.Empty,
+            TermsConditionsAccepted = false,
+            LastPasswordChangedDate = DateTime.UtcNow
+        };
+
+        var result = await userManager.CreateAsync(user, password);
+        return result;
+    }
+
+    public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role)
+    {
+        return await userManager.AddToRoleAsync(user, role);
+    }
+
+    public async Task<ApplicationUser?> FindByIdAsync(string userId)
+    {
+        return await userManager.FindByIdAsync(userId);
+    }
+
+    public async Task<IdentityResult> UpdateUserAsync(ApplicationUser user)
+    {
+        return await userManager.UpdateAsync(user);
+    }
+}
 }

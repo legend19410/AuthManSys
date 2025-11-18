@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Models;
 using AuthManSys.Infrastructure.Persistence;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Infrastructure.Identity;
@@ -84,6 +85,15 @@ public static class ServiceCollectionExtensions
 
         // Add Memory Cache for permission caching
         services.AddMemoryCache();
+
+        // Configure EmailSettings
+        services.Configure<EmailSettings>(options =>
+        {
+            configuration.GetSection("EmailSettings").Bind(options);
+        });
+
+        // Add Email Service
+        services.AddScoped<IEmailService, EmailService>();
 
         return services;
     }

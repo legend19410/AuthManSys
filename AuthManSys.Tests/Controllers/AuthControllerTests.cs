@@ -6,18 +6,24 @@ using AuthManSys.Api.Models;
 using AuthManSys.Application.Security.Commands.Login;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
+using AuthManSys.Application.Common.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace AuthManSys.Tests.Controllers;
 
 public class AuthControllerTests
 {
     private readonly Mock<IMediator> _mockMediator;
+    private readonly Mock<IPermissionService> _mockPermissionService;
+    private readonly Mock<ILogger<AuthController>> _mockLogger;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
     {
         _mockMediator = new Mock<IMediator>();
-        _controller = new AuthController(_mockMediator.Object);
+        _mockPermissionService = new Mock<IPermissionService>();
+        _mockLogger = new Mock<ILogger<AuthController>>();
+        _controller = new AuthController(_mockMediator.Object, _mockPermissionService.Object, _mockLogger.Object);
     }
 
     [Fact]
