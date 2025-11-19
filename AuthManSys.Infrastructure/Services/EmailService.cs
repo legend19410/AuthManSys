@@ -86,6 +86,44 @@ public class EmailService : IEmailService
         await SendEmailAsync(toEmail, subject, htmlBody);
     }
 
+    public async Task SendTwoFactorCodeAsync(string toEmail, string username, string twoFactorCode)
+    {
+        var subject = "Two-Factor Authentication Code - AuthManSys";
+        var htmlBody = $@"
+            <html>
+                <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
+                    <div style='max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h2 style='color: #2c3e50;'>Two-Factor Authentication</h2>
+                        <p>Hello {username},</p>
+                        <p>You have requested to sign in to your AuthManSys account. To complete your login, please enter the following verification code:</p>
+
+                        <div style='margin: 30px 0; text-align: center;'>
+                            <div style='background-color: #f8f9fa; border: 2px solid #3498db; padding: 20px; border-radius: 8px; display: inline-block;'>
+                                <span style='font-size: 24px; font-weight: bold; letter-spacing: 3px; color: #2c3e50; font-family: monospace;'>
+                                    {twoFactorCode}
+                                </span>
+                            </div>
+                        </div>
+
+                        <p style='color: #e74c3c; font-weight: bold; text-align: center;'>
+                            This code will expire in 5 minutes for security reasons.
+                        </p>
+
+                        <p style='margin-top: 30px; font-size: 14px; color: #666;'>
+                            If you did not request this code, someone may be trying to access your account. Please secure your account immediately.
+                        </p>
+
+                        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
+                        <p style='font-size: 12px; color: #999; text-align: center;'>
+                            This email was sent by AuthManSys. Please do not reply to this email.
+                        </p>
+                    </div>
+                </body>
+            </html>";
+
+        await SendEmailAsync(toEmail, subject, htmlBody);
+    }
+
     public async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
     {
         if (string.IsNullOrEmpty(_emailSettings.FromEmail) || string.IsNullOrEmpty(_emailSettings.Username))

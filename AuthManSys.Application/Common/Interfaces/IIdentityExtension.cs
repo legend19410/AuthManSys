@@ -12,10 +12,16 @@ public interface IIdentityExtension
     Task<IList<string>> GetUserRolesAsync(ApplicationUser user);
     Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName);
     Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role);
+    Task<IdentityResult> RemoveFromRoleAsync(ApplicationUser user, string role);
     string GenerateToken(string username, string email, string userId);
     Task<IdentityResult> ConfirmEmailAsync(string userName, string token);
     Task<string> GenerateEmailConfirmationTokenAsync(string userName);
     Task<IdentityResult> UpdateEmailConfirmationTokenAsync(string userName, string token);
     Task<ApplicationUser?> FindByIdAsync(string userId);
     Task<IdentityResult> UpdateUserAsync(ApplicationUser user);
+    Task<IdentityResult> CreateRoleAsync(string roleName, string? description = null);
+    Task<bool> RoleExistsAsync(string roleName);
+    Task<IdentityResult> EnableTwoFactorAsync(ApplicationUser user);
+    Task<IdentityResult> DisableTwoFactorAsync(ApplicationUser user);
+    Task<IdentityResult> UpdateTwoFactorCodeAsync(ApplicationUser user, string code, DateTime expiration);
 }

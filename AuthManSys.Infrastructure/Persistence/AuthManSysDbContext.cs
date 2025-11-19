@@ -19,6 +19,7 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
     public async Task<UserInformationResponse?> GetUserInformationAsync(int userId, CancellationToken cancellationToken = default)
     {
         var user = await Users
+            .Where(u => !u.IsDeleted)
             .FirstOrDefaultAsync(u => u.UserId == userId, cancellationToken);
 
         if (user == null)
@@ -64,7 +65,7 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
 
     public async Task<PagedResponse<UserInformationResponse>> GetAllUsersAsync(PagedRequest request, CancellationToken cancellationToken = default)
     {
-        var query = Users.AsQueryable();
+        var query = Users.Where(u => !u.IsDeleted).AsQueryable();
 
         // Apply search filter
         if (!string.IsNullOrEmpty(request.SearchTerm))

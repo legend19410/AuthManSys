@@ -1,0 +1,83 @@
+using MediatR;
+using Microsoft.Extensions.Logging;
+using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Models.Responses;
+
+namespace AuthManSys.Application.SoftDeleteUser.Commands;
+
+public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserCommand, SoftDeleteUserResponse>
+{
+    private readonly IIdentityExtension _identityExtension;
+    private readonly ILogger<SoftDeleteUserCommandHandler> _logger;
+
+    public SoftDeleteUserCommandHandler(
+        IIdentityExtension identityExtension,
+        ILogger<SoftDeleteUserCommandHandler> logger)
+    {
+        _identityExtension = identityExtension;
+        _logger = logger;
+    }
+
+    public async Task<SoftDeleteUserResponse> Handle(SoftDeleteUserCommand request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var user = await _identityExtension.FindByUserNameAsync(request.Username);
+            if (user == null)
+            {
+                _logger.LogWarning("User with username {Username} not found for soft delete", request.Username);
+                return new SoftDeleteUserResponse
+                {
+                    IsDeleted = false,
+                    Message = "User not found"
+                };
+            }
+
+            if (user.IsDeleted)
+            {
+                _logger.LogWarning("User {Username} is already deleted", request.Username);
+                return new SoftDeleteUserResponse
+                {
+                    IsDeleted = false,
+                    Message = "User is already deleted"
+                };
+            }
+
+            // Perform soft delete
+            user.IsDeleted = true;
+            user.DeletedAt = DateTime.UtcNow;
+            user.DeletedBy = request.DeletedBy;
+
+            var result = await _identityExtension.UpdateUserAsync(user);
+
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("User {Username} soft deleted successfully by {DeletedBy}", request.Username, request.DeletedBy);
+                return new SoftDeleteUserResponse
+                {
+                    IsDeleted = true,
+                    Message = "User soft deleted successfully",
+                    Username = user.UserName,
+                    DeletedAt = user.DeletedAt,
+                    DeletedBy = user.DeletedBy
+                };
+            }
+
+            _logger.LogWarning("Failed to soft delete user {Username}: {Errors}", request.Username, string.Join(", ", result.Errors.Select(e => e.Description)));
+            return new SoftDeleteUserResponse
+            {
+                IsDeleted = false,
+                Message = $"Failed to delete user: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error soft deleting user {Username}", request.Username);
+            return new SoftDeleteUserResponse
+            {
+                IsDeleted = false,
+                Message = "An error occurred while deleting the user"
+            };
+        }
+    }
+}

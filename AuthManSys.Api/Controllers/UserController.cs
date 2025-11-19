@@ -7,6 +7,7 @@ using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Api.Models;
 using AuthManSys.Application.UpdateUser.Commands;
+using AuthManSys.Application.SoftDeleteUser.Commands;
 
 namespace AuthManSys.Api.Controllers;
 
@@ -145,6 +146,71 @@ public class UserController : ControllerBase
                 request.FirstName,
                 request.LastName,
                 request.Email);
+
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsUpdated)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while updating user information." });
+        }
+    }
+
+    /// <summary>
+    /// Soft delete a user
+    /// </summary>
+    [HttpDelete("soft-delete")]
+    [Authorize(Policy = "DeleteUsers")]
+    public async Task<ActionResult<SoftDeleteUserResponse>> SoftDeleteUser(
+        [FromBody] SoftDeleteUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var currentUser = User.Identity?.Name ?? "System";
+            var command = new SoftDeleteUserCommand(request.Username, currentUser);
+
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsDeleted)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while deleting the user." });
+        }
+    }
+
+    /// <summary>
+    /// Patch update user information (partial update)
+    /// </summary>
+    [HttpPatch("patch-information")]
+    public async Task<ActionResult<UpdateUserInformationResponse>> PatchUserInformation(
+        [FromBody] PatchUserInformationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Determine which fields were provided in the request
+            var command = new PatchUserInformationCommand(
+                request.Username,
+                request.FirstName,
+                request.LastName,
+                request.Email,
+                !string.IsNullOrEmpty(request.FirstName),
+                !string.IsNullOrEmpty(request.LastName),
+                !string.IsNullOrEmpty(request.Email)
+            );
 
             var result = await _mediator.Send(command, cancellationToken);
 

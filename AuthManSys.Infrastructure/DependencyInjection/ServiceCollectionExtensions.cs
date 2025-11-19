@@ -95,6 +95,9 @@ public static class ServiceCollectionExtensions
         // Add Email Service
         services.AddScoped<IEmailService, EmailService>();
 
+        // Add Two-Factor Authentication Service
+        services.AddScoped<ITwoFactorService, TwoFactorService>();
+
         return services;
     }
 }

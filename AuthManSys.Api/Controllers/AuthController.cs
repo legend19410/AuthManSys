@@ -7,6 +7,8 @@ using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.UserEmail.Commands;
+using AuthManSys.Application.RoleManagement.Commands;
+using AuthManSys.Application.TwoFactor.Commands;
 
 namespace AuthManSys.Api.Controllers;
 
@@ -270,6 +272,186 @@ public class AuthController : ControllerBase
         {
             _logger.LogError(ex, "Error occurred while sending confirmation email for user {Username}", request.Username);
             return StatusCode(500, new { message = "An error occurred while sending confirmation email." });
+        }
+    }
+
+    /// <summary>
+    /// Create a new role
+    /// </summary>
+    [HttpPost("roles/create")]
+    [Authorize]
+    public async Task<ActionResult<CreateRoleResponse>> CreateRole(
+        [FromBody] CreateRoleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new CreateRoleCommand(request.RoleName, request.Description);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsCreated)
+            {
+                _logger.LogInformation("Role {RoleName} created successfully", request.RoleName);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Failed to create role {RoleName}: {Message}", request.RoleName, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while creating role {RoleName}", request.RoleName);
+            return StatusCode(500, new { message = "An error occurred while creating the role." });
+        }
+    }
+
+    /// <summary>
+    /// Assign a role to a user
+    /// </summary>
+    [HttpPost("roles/assign")]
+    [Authorize]
+    public async Task<ActionResult<AssignRoleResponse>> AssignRole(
+        [FromBody] AssignRoleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new AssignRoleCommand(request.UserId, request.RoleName);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsAssigned)
+            {
+                _logger.LogInformation("Role {RoleName} assigned to user {UserId} successfully", request.RoleName, request.UserId);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Failed to assign role {RoleName} to user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while assigning role {RoleName} to user {UserId}", request.RoleName, request.UserId);
+            return StatusCode(500, new { message = "An error occurred while assigning the role." });
+        }
+    }
+
+    /// <summary>
+    /// Remove a role from a user
+    /// </summary>
+    [HttpPost("roles/remove")]
+    [Authorize]
+    public async Task<ActionResult<RemoveRoleResponse>> RemoveRole(
+        [FromBody] RemoveRoleRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new RemoveRoleCommand(request.UserId, request.RoleName);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsRemoved)
+            {
+                _logger.LogInformation("Role {RoleName} removed from user {UserId} successfully", request.RoleName, request.UserId);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Failed to remove role {RoleName} from user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while removing role {RoleName} from user {UserId}", request.RoleName, request.UserId);
+            return StatusCode(500, new { message = "An error occurred while removing the role." });
+        }
+    }
+
+    /// <summary>
+    /// Enable two-factor authentication for a user
+    /// </summary>
+    [HttpPost("two-factor/enable")]
+    [Authorize]
+    public async Task<ActionResult<EnableTwoFactorResponse>> EnableTwoFactor(
+        [FromBody] EnableTwoFactorRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new EnableTwoFactorCommand(request.UserId);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsEnabled)
+            {
+                _logger.LogInformation("Two-factor authentication enabled for user {UserId}", request.UserId);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Failed to enable two-factor authentication for user {UserId}: {Message}", request.UserId, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error enabling two-factor authentication for user {UserId}", request.UserId);
+            return StatusCode(500, new { message = "An error occurred while enabling two-factor authentication." });
+        }
+    }
+
+    /// <summary>
+    /// Send two-factor authentication code via email
+    /// </summary>
+    [HttpPost("two-factor/send-code")]
+    [AllowAnonymous]
+    public async Task<ActionResult<SendTwoFactorCodeResponse>> SendTwoFactorCode(
+        [FromBody] SendTwoFactorCodeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new SendTwoFactorCodeCommand(request.Username);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsCodeSent)
+            {
+                _logger.LogInformation("Two-factor code sent for user {Username}", request.Username);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Failed to send two-factor code for user {Username}: {Message}", request.Username, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending two-factor code for user {Username}", request.Username);
+            return StatusCode(500, new { message = "An error occurred while sending the verification code." });
+        }
+    }
+
+    /// <summary>
+    /// Verify two-factor authentication code and complete login
+    /// </summary>
+    [HttpPost("two-factor/verify")]
+    [AllowAnonymous]
+    public async Task<ActionResult<VerifyTwoFactorCodeResponse>> VerifyTwoFactorCode(
+        [FromBody] VerifyTwoFactorCodeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var command = new VerifyTwoFactorCodeCommand(request.Username, request.Code);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            if (result.IsVerified)
+            {
+                _logger.LogInformation("Two-factor verification successful for user {Username}", request.Username);
+                return Ok(result);
+            }
+
+            _logger.LogWarning("Two-factor verification failed for user {Username}: {Message}", request.Username, result.Message);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying two-factor code for user {Username}", request.Username);
+            return StatusCode(500, new { message = "An error occurred during verification." });
         }
     }
 }

@@ -14,5 +14,14 @@ namespace AuthManSys.Domain.Entities
         public bool TermsConditionsAccepted { get; set; }
         public DateTime? RequestVerificationTokenExpiration { get; set; }
         public DateTime LastPasswordChangedDate { get; set; }
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
+        public string? DeletedBy { get; set; }
+
+        // Two-Factor Authentication properties
+        public string? TwoFactorCode { get; set; }
+        public DateTime? TwoFactorCodeExpiration { get; set; }
+        public bool IsTwoFactorEnabled { get; set; } = false;
+        public DateTime? TwoFactorCodeGeneratedAt { get; set; }
     }
 }

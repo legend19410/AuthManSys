@@ -4,6 +4,7 @@ using AuthManSys.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AuthManSys.Infrastructure.Migrations
 {
     [DbContext(typeof(AuthManSysDbContext))]
-    partial class AuthManSysDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251118082803_AddSoftDeleteToUser")]
+    partial class AddSoftDeleteToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
@@ -52,9 +55,6 @@ namespace AuthManSys.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsTwoFactorEnabled")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("LastName")
@@ -103,15 +103,6 @@ namespace AuthManSys.Infrastructure.Migrations
 
                     b.Property<bool>("TermsConditionsAccepted")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("TwoFactorCode")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("TwoFactorCodeExpiration")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("TwoFactorCodeGeneratedAt")
-                        .HasColumnType("TEXT");
 
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("INTEGER");

@@ -17,25 +17,32 @@ namespace AuthManSys.Infrastructure.Identity
     {
         private readonly UserManager<ApplicationUser> userManager;
         private readonly SignInManager<ApplicationUser> signInManager;
+        private readonly RoleManager<IdentityRole> roleManager;
         private readonly JwtSettings jwtSettings;
 
 
         public IdentityExtension(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
+            RoleManager<IdentityRole> roleManager,
             IOptions<JwtSettings> jwtSettings
         )
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
+            this.roleManager = roleManager;
             this.jwtSettings = jwtSettings.Value;
 
-        
+
         }
 
         public async Task<ApplicationUser?> FindByUserNameAsync(string userName)
         {
             var user = await userManager.FindByNameAsync(userName);
+
+            // Return null if user is soft deleted
+            if (user?.IsDeleted == true)
+                return null;
 
             return user;
         }
@@ -235,7 +242,13 @@ namespace AuthManSys.Infrastructure.Identity
 
     public async Task<ApplicationUser?> FindByEmailAsync(string email)
     {
-        return await userManager.FindByEmailAsync(email);
+        var user = await userManager.FindByEmailAsync(email);
+
+        // Return null if user is soft deleted
+        if (user?.IsDeleted == true)
+            return null;
+
+        return user;
     }
 
     public async Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName)
@@ -263,13 +276,58 @@ namespace AuthManSys.Infrastructure.Identity
         return await userManager.AddToRoleAsync(user, role);
     }
 
+    public async Task<IdentityResult> RemoveFromRoleAsync(ApplicationUser user, string role)
+    {
+        return await userManager.RemoveFromRoleAsync(user, role);
+    }
+
     public async Task<ApplicationUser?> FindByIdAsync(string userId)
     {
-        return await userManager.FindByIdAsync(userId);
+        var user = await userManager.FindByIdAsync(userId);
+
+        // Return null if user is soft deleted
+        if (user?.IsDeleted == true)
+            return null;
+
+        return user;
     }
 
     public async Task<IdentityResult> UpdateUserAsync(ApplicationUser user)
     {
+        return await userManager.UpdateAsync(user);
+    }
+
+    public async Task<IdentityResult> CreateRoleAsync(string roleName, string? description = null)
+    {
+        var role = new IdentityRole(roleName);
+        return await roleManager.CreateAsync(role);
+    }
+
+    public async Task<bool> RoleExistsAsync(string roleName)
+    {
+        return await roleManager.RoleExistsAsync(roleName);
+    }
+
+    public async Task<IdentityResult> EnableTwoFactorAsync(ApplicationUser user)
+    {
+        user.IsTwoFactorEnabled = true;
+        return await userManager.UpdateAsync(user);
+    }
+
+    public async Task<IdentityResult> DisableTwoFactorAsync(ApplicationUser user)
+    {
+        user.IsTwoFactorEnabled = false;
+        user.TwoFactorCode = null;
+        user.TwoFactorCodeExpiration = null;
+        user.TwoFactorCodeGeneratedAt = null;
+        return await userManager.UpdateAsync(user);
+    }
+
+    public async Task<IdentityResult> UpdateTwoFactorCodeAsync(ApplicationUser user, string code, DateTime expiration)
+    {
+        user.TwoFactorCode = code;
+        user.TwoFactorCodeExpiration = expiration;
+        user.TwoFactorCodeGeneratedAt = DateTime.UtcNow;
         return await userManager.UpdateAsync(user);
     }
 }

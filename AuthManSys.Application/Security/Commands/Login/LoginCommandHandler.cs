@@ -36,10 +36,22 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         // Check if email is confirmed
-        var isEmailConfirmed = await _identityExtension.IsEmailConfirmedAsync(request.Username);
-        if (!isEmailConfirmed)
+        // var isEmailConfirmed = await _identityExtension.IsEmailConfirmedAsync(request.Username);
+        // if (!isEmailConfirmed)
+        // {
+        //     throw new UnauthorizedException("Email address is not confirmed");
+        // }
+
+        // Check if two-factor authentication is required
+        if (user.IsTwoFactorEnabled)
         {
-            throw new UnauthorizedException("Email address is not confirmed");
+            return new LoginResponse
+            {
+                RequiresTwoFactor = true,
+                Username = user.UserName ?? request.Username,
+                Email = user.Email ?? "",
+                Message = "Two-factor authentication is required. Please use the verification code sent to your email."
+            };
         }
 
         // Get user roles
@@ -56,6 +68,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             Email = user.Email ?? "",
             Roles = roles.ToList(),
             Token = token,
+            RequiresTwoFactor = false
         };
 
         return authResponse;
