@@ -1,12 +1,7 @@
-using Microsoft.AspNetCore.Identity;
-using AuthManSys.Api.Models;
 using AuthManSys.Infrastructure.DependencyInjection;
-using AuthManSys.Infrastructure.Persistence;
-using AuthManSys.Domain.Entities;
 using AuthManSys.Application.DependencyInjection;
 using AuthManSys.Api.DependencyInjection;
 
-using AuthManSys.Api.ConsoleTest;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,26 +15,6 @@ builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddApiServices(builder.Configuration);
 
 var app = builder.Build();
-
-// Seed database in development
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var context = scope.ServiceProvider.GetRequiredService<AuthManSysDbContext>();
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    await IdentitySeeder.SeedAsync(context, userManager, roleManager);
-
-    // Seed permissions and role-permission mappings
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    await AuthManSys.Infrastructure.Persistence.PermissionSeeder.SeedAsync(context, roleManager, logger);
-
-    // Interactive IdentityManager testing (only when not in container)
-    if (!Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER")?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
-    {
-        await InteractiveIdentityTests.RunInteractiveTest(scope);
-    }
-}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
