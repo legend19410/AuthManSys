@@ -5,10 +5,12 @@ using AuthManSys.Application.UserInformation.Queries;
 using AuthManSys.Application.UserRegistration.Commands;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Models.Responses;
+using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Api.Models;
 using AuthManSys.Application.UpdateUser.Commands;
 using AuthManSys.Application.SoftDeleteUser.Commands;
 using AuthManSys.Application.PasswordManagement.Commands;
+using AuthManSys.Domain.Entities;
 using System.Security.Claims;
 
 namespace AuthManSys.Api.Controllers;
@@ -19,10 +21,12 @@ namespace AuthManSys.Api.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IActivityLogService _activityLogService;
 
-    public UserController(IMediator mediator)
+    public UserController(IMediator mediator, IActivityLogService activityLogService)
     {
         _mediator = mediator;
+        _activityLogService = activityLogService;
     }
 
     [HttpGet("{userId:int}")]
@@ -317,6 +321,36 @@ public class UserController : ControllerBase
         catch (Exception)
         {
             return StatusCode(500, new { message = "An error occurred while resetting password." });
+        }
+    }
+
+    /// <summary>
+    /// Get last N activities for a specific user
+    /// </summary>
+    [HttpGet("{userId:int}/activities/last/{count:int}")]
+    public async Task<ActionResult<IEnumerable<UserActivityLog>>> GetLastNUserActivities(
+        int userId,
+        int count,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Validate parameters
+            if (count <= 0 || count > 100)
+            {
+                return BadRequest(new { message = "Count must be between 1 and 100." });
+            }
+
+            var activities = await _activityLogService.GetLastNUserActivitiesAsync(
+                userId,
+                count,
+                cancellationToken);
+
+            return Ok(activities);
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { message = "An error occurred while retrieving user activities." });
         }
     }
 }

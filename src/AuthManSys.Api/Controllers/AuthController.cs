@@ -1,5 +1,6 @@
 
 using AuthManSys.Application.Security.Commands.Login;
+using AuthManSys.Application.Security.Commands.RefreshToken;
 using AuthManSys.Application.UserRegistration.Commands;
 using AuthManSys.Application.UserEmail.Commands;
 using AuthManSys.Application.RoleManagement.Commands;
@@ -39,7 +40,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var command = new LoginCommand(request.Username, request.Password);
+            var command = new LoginCommand(request.Username, request.Password, request.RememberMe);
             var response = await _mediator.Send(command);
             return Ok(response);
         }
@@ -50,6 +51,31 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest($"Login failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Refresh access token using refresh token
+    /// </summary>
+    [HttpPost("refresh-token")]
+    [AllowAnonymous]
+    public async Task<ActionResult<RefreshTokenResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        try
+        {
+            var command = new RefreshTokenCommand(request.RefreshToken);
+            var response = await _mediator.Send(command);
+
+            if (response.IsSuccess)
+            {
+                return Ok(response);
+            }
+
+            return BadRequest(response);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest($"Token refresh failed: {ex.Message}");
         }
     }
 

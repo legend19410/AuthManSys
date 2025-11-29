@@ -1,6 +1,8 @@
 using AuthManSys.Infrastructure.DependencyInjection;
 using AuthManSys.Application.DependencyInjection;
 using AuthManSys.Api.DependencyInjection;
+using AuthManSys.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,13 @@ builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddApiServices(builder.Configuration);
 
 var app = builder.Build();
+
+// Ensure database is created
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AuthManSysDbContext>();
+    context.Database.EnsureCreated();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

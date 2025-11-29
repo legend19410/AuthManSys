@@ -6,12 +6,15 @@ WORKDIR /src
 
 # Copy solution and project files first (for caching)
 COPY AuthManSys.sln ./
-COPY AuthManSys.Api/AuthManSys.Api.csproj AuthManSys.Api/
-COPY AuthManSys.Application/AuthManSys.Application.csproj AuthManSys.Application/
-COPY AuthManSys.Console/AuthManSys.Console.csproj AuthManSys.Console/
-COPY AuthManSys.Domain/AuthManSys.Domain.csproj AuthManSys.Domain/
-COPY AuthManSys.Infrastructure/AuthManSys.Infrastructure.csproj AuthManSys.Infrastructure/
-COPY AuthManSys.Tests/AuthManSys.Tests.csproj AuthManSys.Tests/
+COPY src/AuthManSys.Api/AuthManSys.Api.csproj src/AuthManSys.Api/
+COPY src/AuthManSys.Application/AuthManSys.Application.csproj src/AuthManSys.Application/
+COPY src/AuthManSys.Console/AuthManSys.Console.csproj src/AuthManSys.Console/
+COPY src/AuthManSys.Domain/AuthManSys.Domain.csproj src/AuthManSys.Domain/
+COPY src/AuthManSys.Infrastructure/AuthManSys.Infrastructure.csproj src/AuthManSys.Infrastructure/
+COPY tests/AuthManSys.Integration.Tests/AuthManSys.Integration.Tests.csproj tests/AuthManSys.Integration.Tests/
+COPY tests/AuthManSys.Api.Tests/AuthManSys.Api.Tests.csproj tests/AuthManSys.Api.Tests/
+COPY tests/AuthManSys.Application.Tests/AuthManSys.Application.Tests.csproj tests/AuthManSys.Application.Tests/
+COPY tests/AuthManSys.Domain.Tests/AuthManSys.Domain.Tests.csproj tests/AuthManSys.Domain.Tests/
 
 # Install dependencies & VS Debugger
 RUN apt-get update && apt-get install -y unzip curl procps \
@@ -25,7 +28,7 @@ COPY . .
 
 # Build and publish
 RUN dotnet build -c Release
-RUN dotnet publish AuthManSys.Api/AuthManSys.Api.csproj -c Release -o /app/publish
+RUN dotnet publish src/AuthManSys.Api/AuthManSys.Api.csproj -c Release -o /app/publish
 
 # =========================================
 # ======== RUNTIME STAGE ==================
@@ -62,4 +65,4 @@ EXPOSE 8080
 VOLUME ["/src"]
 
 # Start app with watch for hot reload
-ENTRYPOINT ["dotnet", "watch", "run", "--project", "AuthManSys.Api/AuthManSys.Api.csproj", "--urls=http://0.0.0.0:8080"]
+ENTRYPOINT ["dotnet", "watch", "run", "--project", "src/AuthManSys.Api/AuthManSys.Api.csproj", "--urls=http://0.0.0.0:8080"]
