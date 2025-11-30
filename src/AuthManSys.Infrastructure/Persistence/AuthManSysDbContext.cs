@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Application.Common.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using AuthManSys.Application.Common.Interfaces;
 
 namespace AuthManSys.Infrastructure.Persistence;
 
-public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthManSysDbContext
+public class AuthManSysDbContext : IdentityDbContext<ApplicationUser>, IAuthManSysDbContext
 {
     public AuthManSysDbContext(DbContextOptions<AuthManSysDbContext> options) : base(options)
     {
@@ -30,18 +31,23 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
         }
 
         // Get user roles from Identity framework using the proper DbSets
-        var userRoleQuery = from ur in Set<Microsoft.AspNetCore.Identity.IdentityUserRole<string>>()
-                           join r in Set<Microsoft.AspNetCore.Identity.IdentityRole>() on ur.RoleId equals r.Id
+        var userRoleQuery = from ur in Set<IdentityUserRole<string>>()
+                           join r in Set<IdentityRole>() on ur.RoleId equals r.Id
                            where ur.UserId == user.Id
-                           select new { RoleId = r.Id, RoleName = r.Name };
+                           select new {
+                               RoleId = r.Id,
+                               RoleName = r.Name,
+                               RoleDescription = EF.Property<string>(r, "Description"),
+                               AssignedAt = EF.Property<DateTime>(ur, "AssignedAt")
+                           };
 
         var userRoleData = await userRoleQuery.ToListAsync(cancellationToken);
 
         var userRoles = userRoleData.Select(rd => new UserRoleDto(
             Math.Abs(rd.RoleId.GetHashCode()), // Convert GUID to positive integer in memory
             rd.RoleName ?? "Unknown",
-            rd.RoleName ?? "Unknown", // Using role name as description
-            DateTime.UtcNow // Role assignment date - not tracked by default Identity
+            rd.RoleDescription ?? rd.RoleName ?? "Unknown", // Using role name as description temporarily
+            rd.AssignedAt // Role assignment date - now tracked in AspNetUserRoles
         )).ToList();
 
         // Use LastPasswordChangedDate as a proxy for creation date, or a reasonable default
@@ -78,18 +84,23 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
         }
 
         // Get user roles from Identity framework using the proper DbSets
-        var userRoleQuery = from ur in Set<Microsoft.AspNetCore.Identity.IdentityUserRole<string>>()
-                           join r in Set<Microsoft.AspNetCore.Identity.IdentityRole>() on ur.RoleId equals r.Id
+        var userRoleQuery = from ur in Set<IdentityUserRole<string>>()
+                           join r in Set<IdentityRole>() on ur.RoleId equals r.Id
                            where ur.UserId == user.Id
-                           select new { RoleId = r.Id, RoleName = r.Name };
+                           select new {
+                               RoleId = r.Id,
+                               RoleName = r.Name,
+                               RoleDescription = EF.Property<string>(r, "Description"),
+                               AssignedAt = EF.Property<DateTime>(ur, "AssignedAt")
+                           };
 
         var userRoleData = await userRoleQuery.ToListAsync(cancellationToken);
 
         var userRoles = userRoleData.Select(rd => new UserRoleDto(
             Math.Abs(rd.RoleId.GetHashCode()), // Convert GUID to positive integer in memory
             rd.RoleName ?? "Unknown",
-            rd.RoleName ?? "Unknown", // Using role name as description
-            DateTime.UtcNow // Role assignment date - not tracked by default Identity
+            rd.RoleDescription ?? rd.RoleName ?? "Unknown", // Using role name as description temporarily
+            rd.AssignedAt // Role assignment date - now tracked in AspNetUserRoles
         )).ToList();
 
         // Use LastPasswordChangedDate as a proxy for creation date, or a reasonable default
@@ -161,19 +172,24 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
         var userResponses = new List<UserInformationResponse>();
         foreach (var user in users)
         {
-            // Get user roles
-            var userRoleQuery = from ur in Set<Microsoft.AspNetCore.Identity.IdentityUserRole<string>>()
-                               join r in Set<Microsoft.AspNetCore.Identity.IdentityRole>() on ur.RoleId equals r.Id
+            // Get user roles with custom fields using EF.Property
+            var userRoleQuery = from ur in Set<IdentityUserRole<string>>()
+                               join r in Set<IdentityRole>() on ur.RoleId equals r.Id
                                where ur.UserId == user.Id
-                               select new { RoleId = r.Id, RoleName = r.Name };
+                               select new {
+                                   RoleId = r.Id,
+                                   RoleName = r.Name,
+                                   RoleDescription = EF.Property<string>(r, "Description"),
+                                   AssignedAt = EF.Property<DateTime>(ur, "AssignedAt")
+                               };
 
             var userRoleData = await userRoleQuery.ToListAsync(cancellationToken);
 
             var userRoles = userRoleData.Select(rd => new UserRoleDto(
                 Math.Abs(rd.RoleId.GetHashCode()),
                 rd.RoleName ?? "Unknown",
-                rd.RoleName ?? "Unknown",
-                DateTime.UtcNow
+                rd.RoleDescription ?? rd.RoleName ?? "Unknown",
+                rd.AssignedAt
             )).ToList();
 
             DateTime createdAt = user.LastPasswordChangedDate != default(DateTime)
@@ -208,6 +224,25 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configure custom properties on IdentityRole
+        modelBuilder.Entity<IdentityRole>(entity =>
+        {
+            entity.Property<string>("Description").HasMaxLength(500);
+            entity.Property<DateTime>("CreatedAt").IsRequired();
+            entity.Property<int?>("CreatedBy");
+            entity.HasIndex("CreatedAt");
+        });
+
+        // Configure the junction table to use ApplicationRole instead of IdentityRole
+        modelBuilder.Entity<IdentityUserRole<string>>(entity =>
+        {
+            entity.ToTable("AspNetUserRoles");
+            entity.Property<DateTime>("AssignedAt").IsRequired();
+            entity.Property<int?>("AssignedBy");
+            entity.HasIndex("AssignedAt");
+            entity.HasIndex("UserId", "AssignedAt");
+        });
 
         // Configure ApplicationUser entity
         modelBuilder.Entity<ApplicationUser>(entity =>
@@ -293,5 +328,6 @@ public class AuthManSysDbContext :  IdentityDbContext<ApplicationUser>, IAuthMan
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => new { e.UserId, e.Timestamp });
         });
+
     }
 }

@@ -5,5 +5,6 @@ namespace AuthManSys.Application.RoleManagement.Commands;
 
 public record AssignRoleCommand(
     string UserId,
-    string RoleName
+    string RoleName,
+    int? AssignedBy = null
 ) : IRequest<AssignRoleResponse>;

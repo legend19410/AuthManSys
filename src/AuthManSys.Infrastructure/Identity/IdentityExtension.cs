@@ -1,15 +1,16 @@
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Helpers;
 using AuthManSys.Domain.Entities;
+using AuthManSys.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
-
+using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using AuthManSys.Application.Common.Models;
-using Microsoft.EntityFrameworkCore;
 
 
 namespace AuthManSys.Infrastructure.Identity
@@ -276,6 +277,45 @@ namespace AuthManSys.Infrastructure.Identity
     public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role)
     {
         return await userManager.AddToRoleAsync(user, role);
+    }
+
+    public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role, int? assignedBy)
+    {
+        var context = (AuthManSysDbContext)dbContext;
+        using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            // First add the role using UserManager
+            var result = await userManager.AddToRoleAsync(user, role);
+            if (!result.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return result;
+            }
+
+            // Then update the UserRole record with our custom fields
+            var roleEntity = await roleManager.FindByNameAsync(role);
+            if (roleEntity != null)
+            {
+                var userRole = await context.Set<ApplicationUserRole>()
+                    .FirstOrDefaultAsync(ur => ur.UserId == user.Id && ur.RoleId == roleEntity.Id);
+
+                if (userRole != null)
+                {
+                    userRole.AssignedAt = JamaicaTimeHelper.Now;
+                    userRole.AssignedBy = assignedBy;
+                    await context.SaveChangesAsync();
+                }
+            }
+
+            await transaction.CommitAsync();
+            return IdentityResult.Success;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<IdentityResult> RemoveFromRoleAsync(ApplicationUser user, string role)

@@ -58,7 +58,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
                 };
             }
 
-            var result = await _identityExtension.AddToRoleAsync(user, request.RoleName);
+            var result = await _identityExtension.AddToRoleAsync(user, request.RoleName, request.AssignedBy);
 
             if (result.Succeeded)
             {

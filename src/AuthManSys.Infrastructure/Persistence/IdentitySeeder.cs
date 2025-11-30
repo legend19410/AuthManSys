@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using AuthManSys.Domain.Entities;
+using AuthManSys.Application.Common.Helpers;
 
 namespace AuthManSys.Infrastructure.Persistence;
 
@@ -17,20 +18,20 @@ public static class IdentitySeeder
             return; // Already seeded
         }
 
-        // Seed ASP.NET Identity Roles
-        var identityRoles = new[]
+        // Seed ASP.NET Identity Roles with descriptions
+        var identityRoles = new Dictionary<string, string>
         {
-            "Administrator",
-            "Manager",
-            "User",
-            "ReadOnly"
+            { "Administrator", "Full system access with all administrative privileges including user management, system configuration, and security settings" },
+            { "Manager", "Management-level access with permissions to oversee operations, manage users, and access reports" },
+            { "User", "Standard user access with basic functionality for daily operations and personal account management" },
+            { "ReadOnly", "Read-only access with view permissions but no ability to modify data or system settings" }
         };
 
-        foreach (var roleName in identityRoles)
+        foreach (var roleInfo in identityRoles)
         {
-            if (!await roleManager.RoleExistsAsync(roleName))
+            if (!await roleManager.RoleExistsAsync(roleInfo.Key))
             {
-                await roleManager.CreateAsync(new IdentityRole(roleName));
+                await roleManager.CreateAsync(new IdentityRole(roleInfo.Key));
             }
         }
 
@@ -67,9 +68,9 @@ public static class IdentitySeeder
             if (result.Succeeded)
             {
                 // Add user to roles
-                foreach (var role in userData.Roles)
+                foreach (var roleName in userData.Roles)
                 {
-                    await userManager.AddToRoleAsync(user, role);
+                    await userManager.AddToRoleAsync(user, roleName);
                 }
             }
         }
