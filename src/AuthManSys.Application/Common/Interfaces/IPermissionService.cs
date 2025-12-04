@@ -1,3 +1,5 @@
+using AuthManSys.Application.Common.Models;
+
 namespace AuthManSys.Application.Common.Interfaces;
 
 public interface IPermissionService
@@ -33,9 +35,24 @@ public interface IPermissionService
     Task RevokePermissionFromRoleAsync(string roleId, string permissionName);
 
     /// <summary>
+    /// Grants a permission to a role by role name
+    /// </summary>
+    Task<bool> GrantPermissionToRoleByNameAsync(string roleName, string permissionName, string? grantedBy = null);
+
+    /// <summary>
+    /// Revokes a permission from a role by role name
+    /// </summary>
+    Task<bool> RevokePermissionFromRoleByNameAsync(string roleName, string permissionName);
+
+    /// <summary>
     /// Gets all available permissions
     /// </summary>
     Task<IEnumerable<string>> GetAllPermissionsAsync();
+
+    /// <summary>
+    /// Gets all available permissions with detailed information
+    /// </summary>
+    Task<IEnumerable<PermissionDto>> GetAllPermissionsDetailedAsync();
 
     /// <summary>
     /// Creates a new permission
@@ -46,4 +63,19 @@ public interface IPermissionService
     /// Gets role-permission mappings for admin UI
     /// </summary>
     Task<Dictionary<string, List<string>>> GetRolePermissionMappingsAsync();
+
+    /// <summary>
+    /// Gets detailed role-permission mappings for admin UI including all roles
+    /// </summary>
+    Task<IEnumerable<RolePermissionMappingDto>> GetDetailedRolePermissionMappingsAsync();
+
+    /// <summary>
+    /// Grants permissions to roles in bulk using specific mappings
+    /// </summary>
+    Task<BulkOperationResult> BulkGrantPermissionsAsync(List<RolePermissionMappingRequest> permissions, string? grantedBy = null);
+
+    /// <summary>
+    /// Revokes permissions from roles in bulk using specific mappings
+    /// </summary>
+    Task<BulkOperationResult> BulkRevokePermissionsAsync(List<RolePermissionMappingRequest> permissions);
 }

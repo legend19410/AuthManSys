@@ -387,6 +387,20 @@ namespace AuthManSys.Infrastructure.Identity
         return roles;
     }
 
+    public async Task<IEnumerable<RoleDto>> GetAllRolesWithDetailsAsync()
+    {
+        var roles = await roleManager.Roles
+            .Select(r => new {
+                Id = r.Id,
+                Name = r.Name!,
+                NormalizedName = r.NormalizedName,
+                Description = EF.Property<string>(r, "Description")
+            })
+            .ToListAsync();
+
+        return roles.Select(r => new RoleDto(r.Id, r.Name, r.NormalizedName, r.Description));
+    }
+
     public async Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId)
     {
         var refreshToken = new RefreshToken

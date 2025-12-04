@@ -55,6 +55,9 @@ public class PermissionPolicyProvider : IAuthorizationPolicyProvider
                policyName.Contains("Create") ||
                policyName.Contains("Edit") ||
                policyName.Contains("Delete") ||
-               policyName.Contains("Access");
+               policyName.Contains("Access") ||
+               policyName.Contains("Grant") ||
+               policyName.Contains("Revoke") ||
+               policyName.Contains("Bulk");
     }
 }

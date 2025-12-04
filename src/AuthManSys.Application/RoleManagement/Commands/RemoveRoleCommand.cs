@@ -4,6 +4,6 @@ using AuthManSys.Application.Common.Models.Responses;
 namespace AuthManSys.Application.RoleManagement.Commands;
 
 public record RemoveRoleCommand(
-    string UserId,
+    int UserId,
     string RoleName
 ) : IRequest<RemoveRoleResponse>;

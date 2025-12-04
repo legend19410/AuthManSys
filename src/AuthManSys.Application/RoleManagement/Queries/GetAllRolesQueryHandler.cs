@@ -15,7 +15,7 @@ public class GetAllRolesQueryHandler : IRequestHandler<GetAllRolesQuery, IEnumer
 
     public async Task<IEnumerable<RoleDto>> Handle(GetAllRolesQuery request, CancellationToken cancellationToken)
     {
-        var roleNames = await _identityExtension.GetAllRolesAsync();
-        return roleNames.Select(name => new RoleDto(Guid.NewGuid().ToString(), name, name?.ToUpper()));
+        var roles = await _identityExtension.GetAllRolesWithDetailsAsync();
+        return roles;
     }
 }

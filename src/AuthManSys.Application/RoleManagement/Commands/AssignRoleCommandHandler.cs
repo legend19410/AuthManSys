@@ -24,14 +24,17 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
         try
         {
             // Find user by ID
-            var user = await _identityExtension.FindByIdAsync(request.UserId);
+            var user = await _identityExtension.FindByUserIdAsync(request.UserId);
             if (user == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", request.UserId);
                 return new AssignRoleResponse
                 {
                     IsAssigned = false,
-                    Message = $"User with ID '{request.UserId}' not found"
+                    Message = $"User with ID '{request.UserId}' not found",
+                    UserId = request.UserId,
+                    RoleName = request.RoleName,
+                    AssignedAt = null
                 };
             }
 
@@ -42,7 +45,10 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
                 return new AssignRoleResponse
                 {
                     IsAssigned = false,
-                    Message = $"Role '{request.RoleName}' does not exist"
+                    Message = $"Role '{request.RoleName}' does not exist",
+                    UserId = request.UserId,
+                    RoleName = request.RoleName,
+                    AssignedAt = null
                 };
             }
 
@@ -54,7 +60,10 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
                 return new AssignRoleResponse
                 {
                     IsAssigned = false,
-                    Message = $"User already has the role '{request.RoleName}'"
+                    Message = $"User already has the role '{request.RoleName}'",
+                    UserId = request.UserId,
+                    RoleName = request.RoleName,
+                    AssignedAt = null
                 };
             }
 
@@ -77,7 +86,10 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
             return new AssignRoleResponse
             {
                 IsAssigned = false,
-                Message = $"Failed to assign role: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+                Message = $"Failed to assign role: {string.Join(", ", result.Errors.Select(e => e.Description))}",
+                UserId = request.UserId,
+                RoleName = request.RoleName,
+                AssignedAt = null
             };
         }
         catch (Exception ex)
@@ -86,7 +98,10 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
             return new AssignRoleResponse
             {
                 IsAssigned = false,
-                Message = "An error occurred while assigning the role"
+                Message = "An error occurred while assigning the role",
+                UserId = request.UserId,
+                RoleName = request.RoleName,
+                AssignedAt = null
             };
         }
     }

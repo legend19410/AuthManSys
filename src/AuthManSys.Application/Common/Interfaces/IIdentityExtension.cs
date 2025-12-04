@@ -1,4 +1,5 @@
 using AuthManSys.Domain.Entities;
+using AuthManSys.Application.Common.Models;
 using Microsoft.AspNetCore.Identity;
 
 namespace AuthManSys.Application.Common.Interfaces;
@@ -27,6 +28,7 @@ public interface IIdentityExtension
     Task<IdentityResult> DisableTwoFactorAsync(ApplicationUser user);
     Task<IdentityResult> UpdateTwoFactorCodeAsync(ApplicationUser user, string code, DateTime expiration);
     Task<IEnumerable<string>> GetAllRolesAsync();
+    Task<IEnumerable<RoleDto>> GetAllRolesWithDetailsAsync();
     Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId);
     Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId);
     Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken);

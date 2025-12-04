@@ -88,7 +88,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var permissions = await _permissionService.GetAllPermissionsAsync();
+            var permissions = await _permissionService.GetAllPermissionsDetailedAsync();
             return Ok(permissions);
         }
         catch (Exception ex)
@@ -107,7 +107,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var mappings = await _permissionService.GetRolePermissionMappingsAsync();
+            var mappings = await _permissionService.GetDetailedRolePermissionMappingsAsync();
             return Ok(mappings);
         }
         catch (Exception ex)
@@ -127,19 +127,29 @@ public class AuthController : ControllerBase
         try
         {
             var currentUser = User.Identity?.Name;
-            await _permissionService.GrantPermissionToRoleAsync(
-                request.RoleId,
+            var wasGranted = await _permissionService.GrantPermissionToRoleByNameAsync(
+                request.RoleName,
                 request.PermissionName,
                 currentUser);
 
-            _logger.LogInformation("Permission {Permission} granted to role {RoleId} by {User}",
-                request.PermissionName, request.RoleId, currentUser);
+            if (wasGranted)
+            {
+                _logger.LogInformation("Permission {Permission} granted to role {RoleName} by {User}",
+                    request.PermissionName, request.RoleName, currentUser);
 
-            return Ok(new { message = "Permission granted successfully" });
+                return Ok(new { message = "Permission granted successfully" });
+            }
+            else
+            {
+                _logger.LogInformation("Permission {Permission} was already assigned to role {RoleName}",
+                    request.PermissionName, request.RoleName);
+
+                return Ok(new { message = "Permission was already assigned to this role" });
+            }
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -157,14 +167,28 @@ public class AuthController : ControllerBase
     {
         try
         {
-            await _permissionService.RevokePermissionFromRoleAsync(
-                request.RoleId,
+            var wasRevoked = await _permissionService.RevokePermissionFromRoleByNameAsync(
+                request.RoleName,
                 request.PermissionName);
 
-            _logger.LogInformation("Permission {Permission} revoked from role {RoleId}",
-                request.PermissionName, request.RoleId);
+            if (wasRevoked)
+            {
+                _logger.LogInformation("Permission {Permission} revoked from role {RoleName}",
+                    request.PermissionName, request.RoleName);
 
-            return Ok(new { message = "Permission revoked successfully" });
+                return Ok(new { message = "Permission revoked successfully" });
+            }
+            else
+            {
+                _logger.LogInformation("Permission {Permission} was not assigned to role {RoleName}",
+                    request.PermissionName, request.RoleName);
+
+                return Ok(new { message = "Permission was not assigned to this role" });
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -364,7 +388,7 @@ public class AuthController : ControllerBase
             }
 
             _logger.LogWarning("Failed to assign role {RoleName} to user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
-            return BadRequest(result);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -394,7 +418,7 @@ public class AuthController : ControllerBase
             }
 
             _logger.LogWarning("Failed to remove role {RoleName} from user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
-            return BadRequest(result);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -495,7 +519,129 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { message = "An error occurred during verification." });
         }
     }
+
+    /// <summary>
+    /// Bulk grant permissions to multiple roles
+    /// </summary>
+    [HttpPost("permissions/bulk-grant")]
+    [Authorize(Policy = "GrantPermissions")]
+    public async Task<IActionResult> BulkGrantPermissions([FromBody] BulkPermissionAssignmentRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid request data" });
+            }
+
+            var currentUser = User.Identity?.Name;
+
+            // Convert API model to service model
+            var permissions = request.Permissions.Select(p => new Application.Common.Models.RolePermissionMappingRequest
+            {
+                RoleName = p.RoleName,
+                PermissionName = p.PermissionName
+            }).ToList();
+
+            var result = await _permissionService.BulkGrantPermissionsAsync(permissions, currentUser);
+
+            _logger.LogInformation(
+                "Bulk permission grant operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
+                currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
+
+            if (result.IsFullySuccessful)
+            {
+                return Ok(new
+                {
+                    message = $"Successfully granted {result.SuccessfulOperations} permissions",
+                    details = result
+                });
+            }
+            else if (result.HasPartialSuccess)
+            {
+                return Ok(new
+                {
+                    message = $"Partial success: {result.SuccessfulOperations} granted, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
+                    details = result
+                });
+            }
+            else
+            {
+                return BadRequest(new
+                {
+                    message = $"Bulk grant failed: {string.Join(", ", result.ErrorMessages)}",
+                    details = result
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bulk permission grant");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Bulk revoke permissions from multiple roles
+    /// </summary>
+    [HttpPost("permissions/bulk-revoke")]
+    [Authorize(Policy = "RevokePermissions")]
+    public async Task<IActionResult> BulkRevokePermissions([FromBody] BulkPermissionRemovalRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { message = "Invalid request data" });
+            }
+
+            var currentUser = User.Identity?.Name;
+
+            // Convert API model to service model
+            var permissions = request.Permissions.Select(p => new Application.Common.Models.RolePermissionMappingRequest
+            {
+                RoleName = p.RoleName,
+                PermissionName = p.PermissionName
+            }).ToList();
+
+            var result = await _permissionService.BulkRevokePermissionsAsync(permissions);
+
+            _logger.LogInformation(
+                "Bulk permission revoke operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
+                currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
+
+            if (result.IsFullySuccessful)
+            {
+                return Ok(new
+                {
+                    message = $"Successfully revoked {result.SuccessfulOperations} permissions",
+                    details = result
+                });
+            }
+            else if (result.HasPartialSuccess)
+            {
+                return Ok(new
+                {
+                    message = $"Partial success: {result.SuccessfulOperations} revoked, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
+                    details = result
+                });
+            }
+            else
+            {
+                return BadRequest(new
+                {
+                    message = $"Bulk revoke failed: {string.Join(", ", result.ErrorMessages)}",
+                    details = result
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during bulk permission revoke");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
 }
 
-public record GrantPermissionRequest(string RoleId, string PermissionName);
-public record RevokePermissionRequest(string RoleId, string PermissionName);
+public record GrantPermissionRequest(string RoleName, string PermissionName);
+public record RevokePermissionRequest(string RoleName, string PermissionName);

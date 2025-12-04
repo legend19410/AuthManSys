@@ -76,8 +76,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IdentityExtension>();
         services.AddScoped<IIdentityExtension, IdentityExtension>();
 
-        // Add Permission Service
+        // Add Permission Services
         services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<IPermissionCacheManager, PermissionCacheManager>();
 
         // Add Authorization components
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();

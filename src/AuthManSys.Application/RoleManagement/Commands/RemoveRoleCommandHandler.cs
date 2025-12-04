@@ -24,14 +24,17 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
         try
         {
             // Find user by ID
-            var user = await _identityExtension.FindByIdAsync(request.UserId);
+            var user = await _identityExtension.FindByUserIdAsync(request.UserId);
             if (user == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", request.UserId);
                 return new RemoveRoleResponse
                 {
                     IsRemoved = false,
-                    Message = $"User with ID '{request.UserId}' not found"
+                    Message = $"User with ID '{request.UserId}' not found",
+                    UserId = request.UserId,
+                    RoleName = request.RoleName,
+                    RemovedAt = null
                 };
             }
 
@@ -42,7 +45,10 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
                 return new RemoveRoleResponse
                 {
                     IsRemoved = false,
-                    Message = $"Role '{request.RoleName}' does not exist"
+                    Message = $"Role '{request.RoleName}' does not exist",
+                    UserId = request.UserId,
+                    RoleName = request.RoleName,
+                    RemovedAt = null
                 };
             }
 
@@ -54,7 +60,10 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
                 return new RemoveRoleResponse
                 {
                     IsRemoved = false,
-                    Message = $"User does not have the role '{request.RoleName}'"
+                    Message = $"User does not have the role '{request.RoleName}'",
+                    UserId = request.UserId,
+                    RoleName = request.RoleName,
+                    RemovedAt = null
                 };
             }
 
@@ -77,7 +86,10 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
             return new RemoveRoleResponse
             {
                 IsRemoved = false,
-                Message = $"Failed to remove role: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+                Message = $"Failed to remove role: {string.Join(", ", result.Errors.Select(e => e.Description))}",
+                UserId = request.UserId,
+                RoleName = request.RoleName,
+                RemovedAt = null
             };
         }
         catch (Exception ex)
@@ -86,7 +98,10 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
             return new RemoveRoleResponse
             {
                 IsRemoved = false,
-                Message = "An error occurred while removing the role"
+                Message = "An error occurred while removing the role",
+                UserId = request.UserId,
+                RoleName = request.RoleName,
+                RemovedAt = null
             };
         }
     }
