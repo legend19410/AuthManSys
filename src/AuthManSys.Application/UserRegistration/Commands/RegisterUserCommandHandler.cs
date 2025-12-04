@@ -7,9 +7,9 @@ namespace AuthManSys.Application.UserRegistration.Commands;
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, RegisterResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
 
-    public RegisterUserCommandHandler(IIdentityExtension identityExtension)
+    public RegisterUserCommandHandler(IIdentityService identityExtension)
     {
         _identityExtension = identityExtension;
     }

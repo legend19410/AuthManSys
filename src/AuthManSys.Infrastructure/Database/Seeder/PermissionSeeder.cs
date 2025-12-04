@@ -2,8 +2,9 @@ using AuthManSys.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using AuthManSys.Infrastructure.Database.DbContext;
 
-namespace AuthManSys.Infrastructure.Persistence;
+namespace AuthManSys.Infrastructure.Database.Seeder;
 
 public static class PermissionSeeder
 {

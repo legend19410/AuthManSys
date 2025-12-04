@@ -2,7 +2,7 @@ using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Helpers;
 using AuthManSys.Domain.Entities;
-using AuthManSys.Infrastructure.Persistence;
+using AuthManSys.Infrastructure.Database.DbContext;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
@@ -13,9 +13,9 @@ using Microsoft.IdentityModel.Tokens;
 using AuthManSys.Application.Common.Models;
 
 
-namespace AuthManSys.Infrastructure.Identity
+namespace AuthManSys.Infrastructure.Services
 {
-    public class IdentityExtension : IIdentityExtension
+    public class IdentityService : IIdentityService
     {
         private readonly UserManager<ApplicationUser> userManager;
         private readonly SignInManager<ApplicationUser> signInManager;
@@ -24,7 +24,7 @@ namespace AuthManSys.Infrastructure.Identity
         private readonly IAuthManSysDbContext dbContext;
 
 
-        public IdentityExtension(
+        public IdentityService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             RoleManager<IdentityRole> roleManager,

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace AuthManSys.Application.Common.Interfaces;
 
-public interface IIdentityExtension
+public interface IIdentityService
 {
     Task<ApplicationUser?> FindByUserNameAsync(string userName);
     Task<ApplicationUser?> FindByEmailAsync(string email);

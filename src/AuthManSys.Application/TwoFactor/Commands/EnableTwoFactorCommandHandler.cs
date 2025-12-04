@@ -8,11 +8,11 @@ namespace AuthManSys.Application.TwoFactor.Commands;
 
 public class EnableTwoFactorCommandHandler : IRequestHandler<EnableTwoFactorCommand, EnableTwoFactorResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ILogger<EnableTwoFactorCommandHandler> _logger;
 
     public EnableTwoFactorCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ILogger<EnableTwoFactorCommandHandler> logger)
     {
         _identityExtension = identityExtension;

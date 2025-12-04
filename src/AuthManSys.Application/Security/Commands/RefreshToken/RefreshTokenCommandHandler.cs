@@ -9,11 +9,11 @@ namespace AuthManSys.Application.Security.Commands.RefreshToken;
 
 public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, RefreshTokenResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ILogger<RefreshTokenCommandHandler> _logger;
 
     public RefreshTokenCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ILogger<RefreshTokenCommandHandler> logger)
     {
         _identityExtension = identityExtension;

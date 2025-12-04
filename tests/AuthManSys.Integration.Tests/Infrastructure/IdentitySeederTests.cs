@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using AuthManSys.Infrastructure.Persistence;
+using AuthManSys.Infrastructure.Database.DbContext;
 using AuthManSys.Domain.Entities;
+using AuthManSys.Infrastructure.Database.Seeder;
 
 namespace AuthManSys.Tests.Infrastructure;
 

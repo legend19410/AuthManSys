@@ -1,7 +1,7 @@
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Domain.Entities;
-using AuthManSys.Infrastructure.Persistence;
+using AuthManSys.Infrastructure.Database.DbContext;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;

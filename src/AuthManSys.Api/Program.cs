@@ -1,7 +1,7 @@
 using AuthManSys.Infrastructure.DependencyInjection;
 using AuthManSys.Application.DependencyInjection;
 using AuthManSys.Api.DependencyInjection;
-using AuthManSys.Infrastructure.Persistence;
+using AuthManSys.Infrastructure.Database.DbContext;
 using Microsoft.EntityFrameworkCore;
 
 

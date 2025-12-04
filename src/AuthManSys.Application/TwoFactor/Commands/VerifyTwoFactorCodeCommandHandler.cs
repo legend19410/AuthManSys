@@ -8,12 +8,12 @@ namespace AuthManSys.Application.TwoFactor.Commands;
 
 public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactorCodeCommand, VerifyTwoFactorCodeResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ITwoFactorService _twoFactorService;
     private readonly ILogger<VerifyTwoFactorCodeCommandHandler> _logger;
 
     public VerifyTwoFactorCodeCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ITwoFactorService twoFactorService,
         ILogger<VerifyTwoFactorCodeCommandHandler> logger)
     {

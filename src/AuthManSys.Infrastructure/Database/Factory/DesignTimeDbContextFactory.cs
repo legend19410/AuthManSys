@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 
-namespace AuthManSys.Infrastructure.Persistence;
+using AuthManSys.Infrastructure.Database.DbContext;
+
+namespace AuthManSys.Infrastructure.Database.Factory;
 
 public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AuthManSysDbContext>
 {

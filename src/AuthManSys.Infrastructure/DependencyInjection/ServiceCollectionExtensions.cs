@@ -5,11 +5,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models;
-using AuthManSys.Infrastructure.Persistence;
+using AuthManSys.Infrastructure.Database.DbContext;
 using AuthManSys.Domain.Entities;
-using AuthManSys.Infrastructure.Identity;
-using AuthManSys.Infrastructure.Authorization;
 using AuthManSys.Infrastructure.Services;
+using AuthManSys.Infrastructure.Authorization;
 
 namespace AuthManSys.Infrastructure.DependencyInjection;
 
@@ -72,9 +71,9 @@ public static class ServiceCollectionExtensions
         // Add repositories
         services.AddScoped<IAuthManSysDbContext, AuthManSysDbContext>();
 
-        // Add Identity Extension
-        services.AddScoped<IdentityExtension>();
-        services.AddScoped<IIdentityExtension, IdentityExtension>();
+        // Add Identity Service
+        services.AddScoped<IdentityService>();
+        services.AddScoped<IIdentityService, IdentityService>();
 
         // Add Permission Services
         services.AddScoped<IPermissionService, PermissionService>();

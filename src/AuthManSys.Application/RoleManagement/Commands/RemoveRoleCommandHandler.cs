@@ -8,11 +8,11 @@ namespace AuthManSys.Application.RoleManagement.Commands;
 
 public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, RemoveRoleResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ILogger<RemoveRoleCommandHandler> _logger;
 
     public RemoveRoleCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ILogger<RemoveRoleCommandHandler> logger)
     {
         _identityExtension = identityExtension;

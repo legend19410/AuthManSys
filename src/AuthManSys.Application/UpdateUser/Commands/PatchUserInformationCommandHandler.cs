@@ -7,11 +7,11 @@ namespace AuthManSys.Application.UpdateUser.Commands;
 
 public class PatchUserInformationCommandHandler : IRequestHandler<PatchUserInformationCommand, UpdateUserInformationResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ILogger<PatchUserInformationCommandHandler> _logger;
 
     public PatchUserInformationCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ILogger<PatchUserInformationCommandHandler> logger)
     {
         _identityExtension = identityExtension;

@@ -8,14 +8,14 @@ namespace AuthManSys.Application.TwoFactor.Commands;
 
 public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCodeCommand, SendTwoFactorCodeResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ITwoFactorService _twoFactorService;
     private readonly IEmailService _emailService;
     private readonly IActivityLogService _activityLogService;
     private readonly ILogger<SendTwoFactorCodeCommandHandler> _logger;
 
     public SendTwoFactorCodeCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ITwoFactorService twoFactorService,
         IEmailService emailService,
         IActivityLogService activityLogService,

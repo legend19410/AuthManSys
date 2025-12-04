@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Application.Common.Helpers;
+using AuthManSys.Infrastructure.Database.DbContext;
 
-namespace AuthManSys.Infrastructure.Persistence;
+namespace AuthManSys.Infrastructure.Database.Seeder;
 
 public static class IdentitySeeder
 {

@@ -6,9 +6,9 @@ namespace AuthManSys.Application.RoleManagement.Queries;
 
 public class GetAllRolesQueryHandler : IRequestHandler<GetAllRolesQuery, IEnumerable<RoleDto>>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
 
-    public GetAllRolesQueryHandler(IIdentityExtension identityExtension)
+    public GetAllRolesQueryHandler(IIdentityService identityExtension)
     {
         _identityExtension = identityExtension;
     }

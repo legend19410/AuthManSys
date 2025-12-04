@@ -8,11 +8,11 @@ namespace AuthManSys.Application.SoftDeleteUser.Commands;
 
 public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserCommand, SoftDeleteUserResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ILogger<SoftDeleteUserCommandHandler> _logger;
 
     public SoftDeleteUserCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ILogger<SoftDeleteUserCommandHandler> logger)
     {
         _identityExtension = identityExtension;

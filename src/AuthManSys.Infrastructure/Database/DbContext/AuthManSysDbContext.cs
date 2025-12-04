@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using AuthManSys.Application.Common.Interfaces;
 
-namespace AuthManSys.Infrastructure.Persistence;
+namespace AuthManSys.Infrastructure.Database.DbContext;
 
 public class AuthManSysDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string, IdentityUserClaim<string>, ApplicationUserRole, IdentityUserLogin<string>, IdentityRoleClaim<string>, IdentityUserToken<string>>, IAuthManSysDbContext
 {

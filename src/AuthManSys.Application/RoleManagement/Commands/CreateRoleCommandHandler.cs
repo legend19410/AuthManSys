@@ -8,11 +8,11 @@ namespace AuthManSys.Application.RoleManagement.Commands;
 
 public class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand, CreateRoleResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly ILogger<CreateRoleCommandHandler> _logger;
 
     public CreateRoleCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         ILogger<CreateRoleCommandHandler> logger)
     {
         _identityExtension = identityExtension;

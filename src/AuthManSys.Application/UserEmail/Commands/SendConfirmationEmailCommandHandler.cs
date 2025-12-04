@@ -6,11 +6,11 @@ namespace AuthManSys.Application.UserEmail.Commands;
 
 public class SendConfirmationEmailCommandHandler : IRequestHandler<SendConfirmationEmailCommand, SendEmailResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly IEmailService _emailService;
 
     public SendConfirmationEmailCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         IEmailService emailService)
     {
         _identityExtension = identityExtension;

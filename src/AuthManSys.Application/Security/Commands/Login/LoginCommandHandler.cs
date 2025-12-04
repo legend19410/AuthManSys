@@ -13,12 +13,12 @@ namespace AuthManSys.Application.Security.Commands.Login;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
     private readonly IActivityLogService _activityLogService;
     private readonly IMediator _mediator;
 
     public LoginCommandHandler(
-        IIdentityExtension identityExtension,
+        IIdentityService identityExtension,
         IActivityLogService activityLogService,
         IMediator mediator
     )

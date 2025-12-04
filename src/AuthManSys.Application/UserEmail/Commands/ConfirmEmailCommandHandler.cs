@@ -6,9 +6,9 @@ namespace AuthManSys.Application.UserEmail.Commands;
 
 public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, ConfirmEmailResponse>
 {
-    private readonly IIdentityExtension _identityExtension;
+    private readonly IIdentityService _identityExtension;
 
-    public ConfirmEmailCommandHandler(IIdentityExtension identityExtension)
+    public ConfirmEmailCommandHandler(IIdentityService identityExtension)
     {
         _identityExtension = identityExtension;
     }
