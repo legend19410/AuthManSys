@@ -2,6 +2,7 @@ using AuthManSys.Infrastructure.DependencyInjection;
 using AuthManSys.Application.DependencyInjection;
 using AuthManSys.Api.DependencyInjection;
 using AuthManSys.Infrastructure.Database.DbContext;
+using AuthManSys.Api.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -39,6 +40,8 @@ if (!app.Environment.IsEnvironment("Docker") && !Environment.GetEnvironmentVaria
 {
     app.UseHttpsRedirection();
 }
+
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
 app.UseCors("AuthManSysCorsPolicy");
 

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AuthManSys.Api.Models;
 
-public class RolePermissionMapping
+public class RolePermissionMappingRequest
 {
     [Required]
     public string RoleName { get; set; } = string.Empty;

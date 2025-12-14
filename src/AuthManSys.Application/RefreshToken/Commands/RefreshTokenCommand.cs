@@ -1,7 +1,7 @@
 using MediatR;
 using AuthManSys.Application.Common.Models.Responses;
 
-namespace AuthManSys.Application.Security.Commands.RefreshToken;
+namespace AuthManSys.Application.RefreshToken.Commands;
 
 public record RefreshTokenCommand(
     string RefreshToken

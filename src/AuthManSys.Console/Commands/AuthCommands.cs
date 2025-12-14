@@ -1,5 +1,5 @@
 using MediatR;
-using AuthManSys.Application.Security.Commands.Login;
+using AuthManSys.Application.Login.Commands;
 using Microsoft.AspNetCore.Identity;
 using AuthManSys.Domain.Entities;
 using Console = System.Console;

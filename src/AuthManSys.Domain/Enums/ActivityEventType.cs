@@ -20,6 +20,7 @@ public enum ActivityEventType
     // User Registration Events
     UserRegistered,
     UserRegistrationFailed,
+    UserCreated,
 
     // Email Verification Events
     EmailConfirmationSent,
@@ -37,6 +38,7 @@ public enum ActivityEventType
     AccountUnlocked,
     AccountDeleted,
     AccountRestored,
+    AccountLinked,
 
     // Profile Management Events
     ProfileUpdated,

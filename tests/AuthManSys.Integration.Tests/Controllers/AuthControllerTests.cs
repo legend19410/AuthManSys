@@ -3,11 +3,13 @@ using Moq;
 using MediatR;
 using AuthManSys.Api.Controllers;
 using AuthManSys.Api.Models;
-using AuthManSys.Application.Security.Commands.Login;
+using AuthManSys.Application.Login.Commands;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Identity;
+using AuthManSys.Domain.Entities;
 
 namespace AuthManSys.Tests.Controllers;
 
@@ -16,6 +18,9 @@ public class AuthControllerTests
     private readonly Mock<IMediator> _mockMediator;
     private readonly Mock<IPermissionService> _mockPermissionService;
     private readonly Mock<ILogger<AuthController>> _mockLogger;
+    private readonly Mock<IIdentityService> _mockIdentityService;
+    private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
+    private readonly Mock<IGoogleTokenService> _mockGoogleTokenService;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
@@ -23,7 +28,14 @@ public class AuthControllerTests
         _mockMediator = new Mock<IMediator>();
         _mockPermissionService = new Mock<IPermissionService>();
         _mockLogger = new Mock<ILogger<AuthController>>();
-        _controller = new AuthController(_mockMediator.Object, _mockPermissionService.Object, _mockLogger.Object);
+        _mockIdentityService = new Mock<IIdentityService>();
+        _mockGoogleTokenService = new Mock<IGoogleTokenService>();
+        _mockSignInManager = new Mock<SignInManager<ApplicationUser>>(
+            new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null).Object,
+            new Mock<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>().Object,
+            new Mock<Microsoft.AspNetCore.Identity.IUserConfirmation<ApplicationUser>>().Object,
+            null, null, null, null);
+        _controller = new AuthController(_mockMediator.Object, _mockPermissionService.Object, _mockLogger.Object, _mockIdentityService.Object, _mockSignInManager.Object, _mockGoogleTokenService.Object);
     }
 
     [Fact]

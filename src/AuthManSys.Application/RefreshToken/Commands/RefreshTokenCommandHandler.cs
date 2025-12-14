@@ -5,7 +5,7 @@ using AuthManSys.Application.Common.Helpers;
 using AuthManSys.Application.Common.Models.Responses;
 using System.IdentityModel.Tokens.Jwt;
 
-namespace AuthManSys.Application.Security.Commands.RefreshToken;
+namespace AuthManSys.Application.RefreshToken.Commands;
 
 public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, RefreshTokenResponse>
 {

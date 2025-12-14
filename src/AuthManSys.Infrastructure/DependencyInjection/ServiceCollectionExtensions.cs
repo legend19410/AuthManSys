@@ -3,12 +3,14 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication.Google;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Infrastructure.Database.DbContext;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Infrastructure.Services;
 using AuthManSys.Infrastructure.Authorization;
+using AuthManSys.Infrastructure.Database.Repositories;
 
 namespace AuthManSys.Infrastructure.DependencyInjection;
 
@@ -68,8 +70,15 @@ public static class ServiceCollectionExtensions
         .AddEntityFrameworkStores<AuthManSysDbContext>()
         .AddDefaultTokenProviders();
 
-        // Add repositories
-        services.AddScoped<IAuthManSysDbContext, AuthManSysDbContext>();
+        // Add Google OAuth authentication
+        services.AddAuthentication()
+            .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+            {
+                options.ClientId = configuration["GoogleAuth:ClientId"] ?? "";
+                options.ClientSecret = configuration["GoogleAuth:ClientSecret"] ?? "";
+            });
+
+        // DbContext is now encapsulated within repositories
 
         // Add Identity Service
         services.AddScoped<IdentityService>();
@@ -98,8 +107,16 @@ public static class ServiceCollectionExtensions
         // Add Two-Factor Authentication Service
         services.AddScoped<ITwoFactorService, TwoFactorService>();
 
+        // Add Google Token Service
+        services.AddScoped<IGoogleTokenService, GoogleTokenService>();
+
         // Add Activity Logging Service
         services.AddScoped<IActivityLogService, ActivityLogService>();
+
+        // Add Repository Services
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         return services;
     }

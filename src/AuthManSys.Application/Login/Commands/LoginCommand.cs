@@ -2,7 +2,7 @@ using MediatR;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Models.Responses;
 
-namespace AuthManSys.Application.Security.Commands.Login;
+namespace AuthManSys.Application.Login.Commands;
 
 public record LoginCommand(
     string Username,

@@ -3,15 +3,16 @@ using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Helpers;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Domain.Enums;
+using AuthManSys.Infrastructure.Database.DbContext;
 using Microsoft.EntityFrameworkCore;
 
 namespace AuthManSys.Infrastructure.Services
 {
     public class ActivityLogService : IActivityLogService
     {
-        private readonly IAuthManSysDbContext _context;
+        private readonly AuthManSysDbContext _context;
 
-        public ActivityLogService(IAuthManSysDbContext context)
+        public ActivityLogService(AuthManSysDbContext context)
         {
             _context = context;
         }

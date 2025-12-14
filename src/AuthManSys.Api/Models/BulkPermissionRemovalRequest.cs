@@ -5,5 +5,5 @@ namespace AuthManSys.Api.Models;
 public class BulkPermissionRemovalRequest
 {
     [Required]
-    public List<RolePermissionMapping> Permissions { get; set; } = new List<RolePermissionMapping>();
+    public List<RolePermissionMappingRequest> Permissions { get; set; } = new List<RolePermissionMappingRequest>();
 }

@@ -9,65 +9,63 @@ using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.TwoFactor.Commands;
 using System.IdentityModel.Tokens.Jwt;
 
-namespace AuthManSys.Application.Security.Commands.Login;
+namespace AuthManSys.Application.Login.Commands;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IIdentityService _identityService;
     private readonly IActivityLogService _activityLogService;
     private readonly IMediator _mediator;
 
     public LoginCommandHandler(
-        IIdentityService identityExtension,
+        IIdentityService identityService,
         IActivityLogService activityLogService,
         IMediator mediator
     )
     {
-        _identityExtension = identityExtension;
+        _identityService = identityService;
         _activityLogService = activityLogService;
         _mediator = mediator;
     }
 
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        try
+        // Find the user
+        var user = await _identityService.FindByUserNameAsync(request.Username);
+        if (user == null)
         {
-            // Find the user
-            var user = await _identityExtension.FindByUserNameAsync(request.Username);
-            if (user == null)
-            {
-                // Log failed login attempt
-                await _activityLogService.LogActivityAsync(
-                    userId: null,
-                    eventType: ActivityEventType.LoginFailed,
-                    description: $"Login attempt failed for non-existent user: {request.Username}",
-                    metadata: new { Username = request.Username, Reason = "UserNotFound" },
-                    cancellationToken: cancellationToken);
+            // Log failed login attempt
+            await _activityLogService.LogActivityAsync(
+                userId: null,
+                eventType: ActivityEventType.LoginFailed,
+                description: $"Login attempt failed for non-existent user: {request.Username}",
+                metadata: new { Username = request.Username, Reason = "UserNotFound" },
+                cancellationToken: cancellationToken);
 
-                throw new UnauthorizedException("Invalid username or password");
-            }
+            throw new UnauthorizedException("Invalid username or password");
+        }
 
-            // Verify password
-            var isPasswordValid = await _identityExtension.CheckPasswordAsync(user, request.Password);
-            if (!isPasswordValid)
-            {
-                // Log failed login attempt
-                await _activityLogService.LogActivityAsync(
-                    userId: user.UserId,
-                    eventType: ActivityEventType.LoginFailed,
-                    description: $"Login attempt failed for user: {user.UserName} - Invalid password",
-                    metadata: new { Username = request.Username, Reason = "InvalidPassword" },
-                    cancellationToken: cancellationToken);
+        // Verify password
+        var isPasswordValid = await _identityService.CheckPasswordAsync(user, request.Password);
+        if (!isPasswordValid)
+        {
+            // Log failed login attempt
+            await _activityLogService.LogActivityAsync(
+                userId: user.UserId,
+                eventType: ActivityEventType.LoginFailed,
+                description: $"Login attempt failed for user: {user.UserName} - Invalid password",
+                metadata: new { Username = request.Username, Reason = "InvalidPassword" },
+                cancellationToken: cancellationToken);
 
-                throw new UnauthorizedException("Invalid username or password");
-            }
+            throw new UnauthorizedException("Invalid username or password");
+        }
 
         // Check if email is confirmed
-        // var isEmailConfirmed = await _identityExtension.IsEmailConfirmedAsync(request.Username);
-        // if (!isEmailConfirmed)
-        // {
-        //     throw new UnauthorizedException("Email address is not confirmed");
-        // }
+        var isEmailConfirmed = await _identityService.IsEmailConfirmedAsync(request.Username);
+        if (!isEmailConfirmed)
+        {
+            throw new UnauthorizedException("Email address is not confirmed");
+        }
 
         // Check if two-factor authentication is required
         if (user.IsTwoFactorEnabled)
@@ -108,15 +106,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
         // Update last login timestamp
         user.LastLoginAt = JamaicaTimeHelper.Now;
-        await _identityExtension.UpdateUserAsync(user);
+        await _identityService.UpdateUserAsync(user);
 
         // Get user roles
-        var roles = await _identityExtension.GetUserRolesAsync(user);
+        var roles = await _identityService.GetUserRolesAsync(user);
         var role = roles.FirstOrDefault() ?? "User";
 
         //generate token
-        var token = _identityExtension.GenerateToken(user.UserName, user.Email, user.Id);
-
+        var token = _identityService.GenerateToken(user.UserName, user.Email, user.Id);
         string? refreshToken = null;
         DateTime? refreshTokenExpiration = null;
 
@@ -125,7 +122,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var jwtToken = jwtTokenHandler.ReadJwtToken(token);
-            refreshToken = await _identityExtension.GenerateRefreshTokenAsync(user, jwtToken.Id);
+            refreshToken = await _identityService.GenerateRefreshTokenAsync(user, jwtToken.Id);
             refreshTokenExpiration = JamaicaTimeHelper.Now.AddDays(30); // This should match your JWT settings
         }
 
@@ -154,27 +151,5 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         };
 
         return authResponse;
-        }
-        catch (UnauthorizedException)
-        {
-            // Re-throw authorization exceptions without additional logging
-            throw;
-        }
-        catch (Exception ex)
-        {
-            // Log unexpected errors
-            await _activityLogService.LogActivityAsync(
-                userId: null,
-                eventType: ActivityEventType.LoginError,
-                description: $"Unexpected error during login for username: {request.Username}",
-                metadata: new {
-                    Username = request.Username,
-                    Error = ex.Message,
-                    StackTrace = ex.StackTrace
-                },
-                cancellationToken: cancellationToken);
-
-            throw;
-        }
     }
 }

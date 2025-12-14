@@ -21,7 +21,8 @@ namespace AuthManSys.Infrastructure.Services
         private readonly SignInManager<ApplicationUser> signInManager;
         private readonly RoleManager<IdentityRole> roleManager;
         private readonly JwtSettings jwtSettings;
-        private readonly IAuthManSysDbContext dbContext;
+        private readonly IUserRepository _userRepository;
+        private readonly AuthManSysDbContext _context;
 
 
         public IdentityService(
@@ -29,14 +30,16 @@ namespace AuthManSys.Infrastructure.Services
             SignInManager<ApplicationUser> signInManager,
             RoleManager<IdentityRole> roleManager,
             IOptions<JwtSettings> jwtSettings,
-            IAuthManSysDbContext dbContext
+            IUserRepository userRepository,
+            AuthManSysDbContext context
         )
         {
             this.userManager = userManager;
             this.signInManager = signInManager;
             this.roleManager = roleManager;
             this.jwtSettings = jwtSettings.Value;
-            this.dbContext = dbContext;
+            this._userRepository = userRepository;
+            this._context = context;
         }
 
         public async Task<ApplicationUser?> FindByUserNameAsync(string userName)
@@ -281,7 +284,7 @@ namespace AuthManSys.Infrastructure.Services
 
     public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role, int? assignedBy)
     {
-        var context = (AuthManSysDbContext)dbContext;
+        var context = _context;
         using var transaction = await context.Database.BeginTransactionAsync();
         try
         {
@@ -403,58 +406,73 @@ namespace AuthManSys.Infrastructure.Services
 
     public async Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId)
     {
-        var refreshToken = new RefreshToken
-        {
-            Token = Guid.NewGuid().ToString(),
-            JwtId = jwtId,
-            UserId = user.UserId,
-            CreationDate = DateTime.UtcNow,
-            ExpirationDate = DateTime.UtcNow.AddDays(jwtSettings.RefreshTokenTimeSpanInDays),
-            Used = false,
-            Invalidated = false
-        };
-
-        await dbContext.RefreshTokens.AddAsync(refreshToken);
-        await dbContext.SaveChangesAsync();
-
-        return refreshToken.Token;
+        return await _userRepository.GenerateRefreshTokenAsync(user, jwtId);
     }
 
     public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId)
     {
-        var storedRefreshToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(x => x.Token == refreshToken);
-
-        if (storedRefreshToken == null)
-            return false;
-
-        if (DateTime.UtcNow > storedRefreshToken.ExpirationDate)
-            return false;
-
-        if (storedRefreshToken.Invalidated)
-            return false;
-
-        if (storedRefreshToken.Used)
-            return false;
-
-        if (storedRefreshToken.JwtId != jwtId)
-            return false;
-
-        return true;
+        return await _userRepository.ValidateRefreshTokenAsync(refreshToken, jwtId);
     }
 
     public async Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken)
     {
-        var storedRefreshToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(x => x.Token == refreshToken);
+        return await _userRepository.GetUserByRefreshTokenAsync(refreshToken);
+    }
 
-        if (storedRefreshToken == null)
-            return null;
+    // Google OAuth methods
+    public async Task<ApplicationUser?> GetUserByGoogleIdAsync(string googleId)
+    {
+        return await _userRepository.GetByGoogleIdAsync(googleId);
+    }
 
-        var user = await userManager.Users
-            .FirstOrDefaultAsync(x => x.UserId == storedRefreshToken.UserId);
+    public async Task<ApplicationUser?> GetUserByEmailAsync(string email)
+    {
+        return await _userRepository.GetByEmailAsync(email);
+    }
 
-        return user;
+    public async Task<IdentityResult> CreateUserFromGoogleAsync(string googleId, string email, string firstName, string lastName, string? pictureUrl)
+    {
+        var user = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            EmailConfirmed = true, // Google emails are pre-verified
+            GoogleId = googleId,
+            GoogleEmail = email,
+            GooglePictureUrl = pictureUrl,
+            IsGoogleAccount = true,
+            GoogleLinkedAt = DateTime.UtcNow,
+            UserId = await GetNextUserIdAsync(),
+            Status = "Active"
+        };
+
+        var result = await userManager.CreateAsync(user);
+        if (result.Succeeded)
+        {
+            // Assign default User role
+            await AddToRoleAsync(user, "User");
+        }
+
+        return result;
+    }
+
+    public async Task<IdentityResult> LinkGoogleAccountAsync(ApplicationUser user, string googleId, string googleEmail, string? pictureUrl)
+    {
+        user.GoogleId = googleId;
+        user.GoogleEmail = googleEmail;
+        user.GooglePictureUrl = pictureUrl;
+        user.IsGoogleAccount = true;
+        user.GoogleLinkedAt = DateTime.UtcNow;
+
+        return await userManager.UpdateAsync(user);
+    }
+
+    private async Task<int> GetNextUserIdAsync()
+    {
+        var maxUserId = await _userRepository.GetMaxUserIdAsync();
+        return maxUserId + 1;
     }
 }
 }

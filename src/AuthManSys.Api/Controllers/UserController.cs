@@ -31,51 +31,29 @@ public class UserController : ControllerBase
 
     [HttpGet("{userId:int}")]
     public async Task<ActionResult<UserInformationResponse>> GetUserInformation(
-        int userId, 
+        int userId,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var query = new GetUserInformationQuery(userId);
-            var result = await _mediator.Send(query, cancellationToken);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while retrieving user information." });
-        }
+        var query = new GetUserInformationQuery(userId);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("current")]
     public async Task<ActionResult<UserInformationResponse>> GetCurrentUserInformation(
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            // Get username from JWT token claims
-            var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst("username")?.Value;
+        // Get username from JWT token claims
+        var username = User.FindFirst(ClaimTypes.Name)?.Value ?? User.FindFirst("username")?.Value;
 
-            if (string.IsNullOrEmpty(username))
-            {
-                return BadRequest(new { message = "Unable to determine username from token." });
-            }
+        if (string.IsNullOrEmpty(username))
+        {
+            return BadRequest(new { message = "Unable to determine username from token." });
+        }
 
-            var query = new GetUserInformationByUsernameQuery(username);
-            var result = await _mediator.Send(query, cancellationToken);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while retrieving user information." });
-        }
+        var query = new GetUserInformationByUsernameQuery(username);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet]
@@ -88,25 +66,18 @@ public class UserController : ControllerBase
         [FromQuery] bool sortDescending = false,
         CancellationToken cancellationToken = default)
     {
-        try
+        var request = new PagedRequest
         {
-            var request = new PagedRequest
-            {
-                PageNumber = pageNumber,
-                PageSize = Math.Min(pageSize, 100), // Limit page size to prevent abuse
-                SearchTerm = searchTerm,
-                SortBy = sortBy,
-                SortDescending = sortDescending
-            };
+            PageNumber = pageNumber,
+            PageSize = Math.Min(pageSize, 100), // Limit page size to prevent abuse
+            SearchTerm = searchTerm,
+            SortBy = sortBy,
+            SortDescending = sortDescending
+        };
 
-            var query = new GetAllUsersQuery(request);
-            var result = await _mediator.Send(query, cancellationToken);
-            return Ok(result);
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while retrieving users." });
-        }
+        var query = new GetAllUsersQuery(request);
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost("register")]
@@ -115,26 +86,15 @@ public class UserController : ControllerBase
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new RegisterUserCommand(
-                request.Username,
-                request.Email,
-                request.Password,
-                request.FirstName,
-                request.LastName);
+        var command = new RegisterUserCommand(
+            request.Username,
+            request.Email,
+            request.Password,
+            request.FirstName,
+            request.LastName);
 
-            var result = await _mediator.Send(command, cancellationToken);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while registering the user." });
-        }
+        var result = await _mediator.Send(command, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -145,27 +105,20 @@ public class UserController : ControllerBase
         [FromBody] UpdateUserInformationRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var command = new UpdateUserInformationCommand(
+            request.Username,
+            request.FirstName,
+            request.LastName,
+            request.Email);
+
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsUpdated)
         {
-            var command = new UpdateUserInformationCommand(
-                request.Username,
-                request.FirstName,
-                request.LastName,
-                request.Email);
-
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsUpdated)
-            {
-                return Ok(result);
-            }
-
-            return BadRequest(result);
+            return Ok(result);
         }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while updating user information." });
-        }
+
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -177,24 +130,17 @@ public class UserController : ControllerBase
         [FromBody] SoftDeleteUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var currentUser = User.Identity?.Name ?? "System";
+        var command = new SoftDeleteUserCommand(request.Username, currentUser);
+
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsDeleted)
         {
-            var currentUser = User.Identity?.Name ?? "System";
-            var command = new SoftDeleteUserCommand(request.Username, currentUser);
-
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsDeleted)
-            {
-                return Ok(result);
-            }
-
-            return BadRequest(result);
+            return Ok(result);
         }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while deleting the user." });
-        }
+
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -205,32 +151,25 @@ public class UserController : ControllerBase
         [FromBody] PatchUserInformationRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        // Determine which fields were provided in the request
+        var command = new PatchUserInformationCommand(
+            request.Username,
+            request.FirstName,
+            request.LastName,
+            request.Email,
+            !string.IsNullOrEmpty(request.FirstName),
+            !string.IsNullOrEmpty(request.LastName),
+            !string.IsNullOrEmpty(request.Email)
+        );
+
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsUpdated)
         {
-            // Determine which fields were provided in the request
-            var command = new PatchUserInformationCommand(
-                request.Username,
-                request.FirstName,
-                request.LastName,
-                request.Email,
-                !string.IsNullOrEmpty(request.FirstName),
-                !string.IsNullOrEmpty(request.LastName),
-                !string.IsNullOrEmpty(request.Email)
-            );
-
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsUpdated)
-            {
-                return Ok(result);
-            }
-
-            return BadRequest(result);
+            return Ok(result);
         }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = "An error occurred while updating user information." });
-        }
+
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -241,34 +180,27 @@ public class UserController : ControllerBase
         [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        // Get current user's username from JWT token claims
+        var username = User.Identity?.Name;
+
+        if (string.IsNullOrEmpty(username))
         {
-            // Get current user's username from JWT token claims
-            var username = User.Identity?.Name;
-
-            if (string.IsNullOrEmpty(username))
-            {
-                return BadRequest(new { message = "Unable to determine user from token." });
-            }
-
-            var command = new ChangePasswordCommand(
-                username,
-                request.CurrentPassword,
-                request.NewPassword);
-
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsChanged)
-            {
-                return Ok(result);
-            }
-
-            return BadRequest(result);
+            return BadRequest(new { message = "Unable to determine user from token." });
         }
-        catch (Exception)
+
+        var command = new ChangePasswordCommand(
+            username,
+            request.CurrentPassword,
+            request.NewPassword);
+
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsChanged)
         {
-            return StatusCode(500, new { message = "An error occurred while changing password." });
+            return Ok(result);
         }
+
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -280,17 +212,10 @@ public class UserController : ControllerBase
         [FromBody] ForgotPasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new ForgotPasswordCommand(request.Email);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new ForgotPasswordCommand(request.Email);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            return Ok(result);
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while processing password reset request." });
-        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -302,26 +227,19 @@ public class UserController : ControllerBase
         [FromBody] ResetPasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var command = new ResetPasswordCommand(
+            request.Email,
+            request.Token,
+            request.NewPassword);
+
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsReset)
         {
-            var command = new ResetPasswordCommand(
-                request.Email,
-                request.Token,
-                request.NewPassword);
-
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsReset)
-            {
-                return Ok(result);
-            }
-
-            return BadRequest(result);
+            return Ok(result);
         }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while resetting password." });
-        }
+
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -333,24 +251,17 @@ public class UserController : ControllerBase
         int count,
         CancellationToken cancellationToken = default)
     {
-        try
+        // Validate parameters
+        if (count <= 0 || count > 100)
         {
-            // Validate parameters
-            if (count <= 0 || count > 100)
-            {
-                return BadRequest(new { message = "Count must be between 1 and 100." });
-            }
-
-            var activities = await _activityLogService.GetLastNUserActivitiesAsync(
-                userId,
-                count,
-                cancellationToken);
-
-            return Ok(activities);
+            return BadRequest(new { message = "Count must be between 1 and 100." });
         }
-        catch (Exception)
-        {
-            return StatusCode(500, new { message = "An error occurred while retrieving user activities." });
-        }
+
+        var activities = await _activityLogService.GetLastNUserActivitiesAsync(
+            userId,
+            count,
+            cancellationToken);
+
+        return Ok(activities);
     }
 }

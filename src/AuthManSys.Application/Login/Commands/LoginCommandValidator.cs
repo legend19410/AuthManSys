@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace AuthManSys.Application.Security.Commands.Login;
+namespace AuthManSys.Application.Login.Commands;
 
 public class LoginCommandValidator : AbstractValidator<LoginCommand>
 {

@@ -1,11 +1,11 @@
 
-using AuthManSys.Application.Security.Commands.Login;
-using AuthManSys.Application.Security.Commands.RefreshToken;
-using AuthManSys.Application.UserRegistration.Commands;
+using AuthManSys.Application.Login.Commands;
+using AuthManSys.Application.RefreshToken.Commands;
 using AuthManSys.Application.UserEmail.Commands;
 using AuthManSys.Application.RoleManagement.Commands;
 using AuthManSys.Application.RoleManagement.Queries;
 using AuthManSys.Application.TwoFactor.Commands;
+using AuthManSys.Application.GoogleAuth.Commands;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Interfaces;
@@ -14,6 +14,10 @@ using AuthManSys.Api.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.Google;
+using AuthManSys.Domain.Entities;
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 
 namespace AuthManSys.Api.Controllers;
 
@@ -24,34 +28,41 @@ public class AuthController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IPermissionService _permissionService;
     private readonly ILogger<AuthController> _logger;
+    private readonly IIdentityService _identityService;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IGoogleTokenService _googleTokenService;
 
     public AuthController(
         IMediator mediator,
         IPermissionService permissionService,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IIdentityService identityService,
+        SignInManager<ApplicationUser> signInManager,
+        IGoogleTokenService googleTokenService)
     {
         _mediator = mediator;
         _permissionService = permissionService;
         _logger = logger;
+        _identityService = identityService;
+        _signInManager = signInManager;
+        _googleTokenService = googleTokenService;
     }
 
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
     {
-        try
-        {
-            var command = new LoginCommand(request.Username, request.Password, request.RememberMe);
-            var response = await _mediator.Send(command);
-            return Ok(response);
-        }
-        catch (UnauthorizedException ex)
-        {
-            return Unauthorized(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest($"Login failed: {ex.Message}");
-        }
+        var command = new LoginCommand(request.Username, request.Password, request.RememberMe);
+        var response = await _mediator.Send(command);
+        return Ok(response);
+    }
+
+    [HttpPost("google-token-login")]
+    [AllowAnonymous]
+    public async Task<ActionResult<LoginResponse>> GoogleTokenLogin([FromBody] GoogleTokenRequest request)
+    {
+        var command = new GoogleTokenLoginCommand(request.IdToken, request.Username);
+        var response = await _mediator.Send(command);
+        return Ok(response);
     }
 
     /// <summary>
@@ -61,22 +72,15 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<RefreshTokenResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
     {
-        try
-        {
-            var command = new RefreshTokenCommand(request.RefreshToken);
-            var response = await _mediator.Send(command);
+        var command = new RefreshTokenCommand(request.RefreshToken);
+        var response = await _mediator.Send(command);
 
-            if (response.IsSuccess)
-            {
-                return Ok(response);
-            }
-
-            return BadRequest(response);
-        }
-        catch (Exception ex)
+        if (response.IsSuccess)
         {
-            return BadRequest($"Token refresh failed: {ex.Message}");
+            return Ok(response);
         }
+
+        return BadRequest(response);
     }
 
     /// <summary>
@@ -86,16 +90,8 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "ViewPermissions")]
     public async Task<IActionResult> GetAllPermissions()
     {
-        try
-        {
-            var permissions = await _permissionService.GetAllPermissionsDetailedAsync();
-            return Ok(permissions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving permissions");
-            return StatusCode(500, "Internal server error");
-        }
+        var permissions = await _permissionService.GetAllPermissionsDetailedAsync();
+        return Ok(permissions);
     }
 
     /// <summary>
@@ -105,16 +101,8 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "ViewPermissions")]
     public async Task<IActionResult> GetRolePermissionMappings()
     {
-        try
-        {
-            var mappings = await _permissionService.GetDetailedRolePermissionMappingsAsync();
-            return Ok(mappings);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving role-permission mappings");
-            return StatusCode(500, "Internal server error");
-        }
+        var mappings = await _permissionService.GetDetailedRolePermissionMappingsAsync();
+        return Ok(mappings);
     }
 
     /// <summary>
@@ -124,37 +112,25 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "GrantPermissions")]
     public async Task<IActionResult> GrantPermission([FromBody] GrantPermissionRequest request)
     {
-        try
+        var currentUser = User.Identity?.Name;
+        var wasGranted = await _permissionService.GrantPermissionToRoleByNameAsync(
+            request.RoleName,
+            request.PermissionName,
+            currentUser);
+
+        if (wasGranted)
         {
-            var currentUser = User.Identity?.Name;
-            var wasGranted = await _permissionService.GrantPermissionToRoleByNameAsync(
-                request.RoleName,
-                request.PermissionName,
-                currentUser);
+            _logger.LogInformation("Permission {Permission} granted to role {RoleName} by {User}",
+                request.PermissionName, request.RoleName, currentUser);
 
-            if (wasGranted)
-            {
-                _logger.LogInformation("Permission {Permission} granted to role {RoleName} by {User}",
-                    request.PermissionName, request.RoleName, currentUser);
-
-                return Ok(new { message = "Permission granted successfully" });
-            }
-            else
-            {
-                _logger.LogInformation("Permission {Permission} was already assigned to role {RoleName}",
-                    request.PermissionName, request.RoleName);
-
-                return Ok(new { message = "Permission was already assigned to this role" });
-            }
+            return Ok(new { message = "Permission granted successfully" });
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error granting permission");
-            return StatusCode(500, "Internal server error");
+            _logger.LogInformation("Permission {Permission} was already assigned to role {RoleName}",
+                request.PermissionName, request.RoleName);
+
+            return Ok(new { message = "Permission was already assigned to this role" });
         }
     }
 
@@ -165,35 +141,23 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "RevokePermissions")]
     public async Task<IActionResult> RevokePermission([FromBody] RevokePermissionRequest request)
     {
-        try
+        var wasRevoked = await _permissionService.RevokePermissionFromRoleByNameAsync(
+            request.RoleName,
+            request.PermissionName);
+
+        if (wasRevoked)
         {
-            var wasRevoked = await _permissionService.RevokePermissionFromRoleByNameAsync(
-                request.RoleName,
-                request.PermissionName);
+            _logger.LogInformation("Permission {Permission} revoked from role {RoleName}",
+                request.PermissionName, request.RoleName);
 
-            if (wasRevoked)
-            {
-                _logger.LogInformation("Permission {Permission} revoked from role {RoleName}",
-                    request.PermissionName, request.RoleName);
-
-                return Ok(new { message = "Permission revoked successfully" });
-            }
-            else
-            {
-                _logger.LogInformation("Permission {Permission} was not assigned to role {RoleName}",
-                    request.PermissionName, request.RoleName);
-
-                return Ok(new { message = "Permission was not assigned to this role" });
-            }
+            return Ok(new { message = "Permission revoked successfully" });
         }
-        catch (InvalidOperationException ex)
+        else
         {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error revoking permission");
-            return StatusCode(500, "Internal server error");
+            _logger.LogInformation("Permission {Permission} was not assigned to role {RoleName}",
+                request.PermissionName, request.RoleName);
+
+            return Ok(new { message = "Permission was not assigned to this role" });
         }
     }
 
@@ -204,22 +168,14 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> CheckPermission(string permissionName)
     {
-        try
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
         {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return BadRequest("User ID not found");
-            }
+            return BadRequest("User ID not found");
+        }
 
-            var hasPermission = await _permissionService.UserHasPermissionAsync(userId, permissionName);
-            return Ok(new { hasPermission });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking permission");
-            return StatusCode(500, "Internal server error");
-        }
+        var hasPermission = await _permissionService.UserHasPermissionAsync(userId, permissionName);
+        return Ok(new { hasPermission });
     }
 
     /// <summary>
@@ -229,22 +185,14 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetMyPermissions()
     {
-        try
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
         {
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return BadRequest("User ID not found");
-            }
+            return BadRequest("User ID not found");
+        }
 
-            var permissions = await _permissionService.GetUserPermissionsAsync(userId);
-            return Ok(permissions);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving user permissions");
-            return StatusCode(500, "Internal server error");
-        }
+        var permissions = await _permissionService.GetUserPermissionsAsync(userId);
+        return Ok(permissions);
     }
 
     /// <summary>
@@ -256,25 +204,17 @@ public class AuthController : ControllerBase
         [FromBody] ConfirmEmailRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new ConfirmEmailCommand(request.Username, request.Token);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new ConfirmEmailCommand(request.Username, request.Token);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            if (result.IsConfirmed)
-            {
-                _logger.LogInformation("Email confirmed successfully for user {Username}", request.Username);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Email confirmation failed for user {Username}: {Message}", request.Username, result.Message);
-            return BadRequest(result);
-        }
-        catch (Exception ex)
+        if (result.IsConfirmed)
         {
-            _logger.LogError(ex, "Error occurred while confirming email for user {Username}", request.Username);
-            return StatusCode(500, new { message = "An error occurred while confirming the email." });
+            _logger.LogInformation("Email confirmed successfully for user {Username}", request.Username);
+            return Ok(result);
         }
+
+        _logger.LogWarning("Email confirmation failed for user {Username}: {Message}", request.Username, result.Message);
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -286,25 +226,17 @@ public class AuthController : ControllerBase
         [FromBody] SendConfirmationEmailRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new SendConfirmationEmailCommand(request.Username);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new SendConfirmationEmailCommand(request.Username);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            if (result.IsEmailSent)
-            {
-                _logger.LogInformation("Confirmation email sent successfully to user {Username}", request.Username);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Failed to send confirmation email for user {Username}: {Message}", request.Username, result.Message);
-            return BadRequest(result);
-        }
-        catch (Exception ex)
+        if (result.IsEmailSent)
         {
-            _logger.LogError(ex, "Error occurred while sending confirmation email for user {Username}", request.Username);
-            return StatusCode(500, new { message = "An error occurred while sending confirmation email." });
+            _logger.LogInformation("Confirmation email sent successfully to user {Username}", request.Username);
+            return Ok(result);
         }
+
+        _logger.LogWarning("Failed to send confirmation email for user {Username}: {Message}", request.Username, result.Message);
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -324,17 +256,9 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<ActionResult<IEnumerable<RoleDto>>> GetAllRoles(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var query = new GetAllRolesQuery();
-            var result = await _mediator.Send(query, cancellationToken);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving roles");
-            return BadRequest("An error occurred while retrieving roles");
-        }
+        var query = new GetAllRolesQuery();
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -346,25 +270,17 @@ public class AuthController : ControllerBase
         [FromBody] CreateRoleRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new CreateRoleCommand(request.RoleName, request.Description);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new CreateRoleCommand(request.RoleName, request.Description);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            if (result.IsCreated)
-            {
-                _logger.LogInformation("Role {RoleName} created successfully", request.RoleName);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Failed to create role {RoleName}: {Message}", request.RoleName, result.Message);
-            return BadRequest(result);
-        }
-        catch (Exception ex)
+        if (result.IsCreated)
         {
-            _logger.LogError(ex, "Error occurred while creating role {RoleName}", request.RoleName);
-            return StatusCode(500, new { message = "An error occurred while creating the role." });
+            _logger.LogInformation("Role {RoleName} created successfully", request.RoleName);
+            return Ok(result);
         }
+
+        _logger.LogWarning("Failed to create role {RoleName}: {Message}", request.RoleName, result.Message);
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -376,25 +292,17 @@ public class AuthController : ControllerBase
         [FromBody] AssignRoleRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var command = new AssignRoleCommand(request.UserId, request.RoleName);
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsAssigned)
         {
-            var command = new AssignRoleCommand(request.UserId, request.RoleName);
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsAssigned)
-            {
-                _logger.LogInformation("Role {RoleName} assigned to user {UserId} successfully", request.RoleName, request.UserId);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Failed to assign role {RoleName} to user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
+            _logger.LogInformation("Role {RoleName} assigned to user {UserId} successfully", request.RoleName, request.UserId);
             return Ok(result);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error occurred while assigning role {RoleName} to user {UserId}", request.RoleName, request.UserId);
-            return StatusCode(500, new { message = "An error occurred while assigning the role." });
-        }
+
+        _logger.LogWarning("Failed to assign role {RoleName} to user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
+        return Ok(result);
     }
 
     /// <summary>
@@ -406,25 +314,17 @@ public class AuthController : ControllerBase
         [FromBody] RemoveRoleRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var command = new RemoveRoleCommand(request.UserId, request.RoleName);
+        var result = await _mediator.Send(command, cancellationToken);
+
+        if (result.IsRemoved)
         {
-            var command = new RemoveRoleCommand(request.UserId, request.RoleName);
-            var result = await _mediator.Send(command, cancellationToken);
-
-            if (result.IsRemoved)
-            {
-                _logger.LogInformation("Role {RoleName} removed from user {UserId} successfully", request.RoleName, request.UserId);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Failed to remove role {RoleName} from user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
+            _logger.LogInformation("Role {RoleName} removed from user {UserId} successfully", request.RoleName, request.UserId);
             return Ok(result);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error occurred while removing role {RoleName} from user {UserId}", request.RoleName, request.UserId);
-            return StatusCode(500, new { message = "An error occurred while removing the role." });
-        }
+
+        _logger.LogWarning("Failed to remove role {RoleName} from user {UserId}: {Message}", request.RoleName, request.UserId, result.Message);
+        return Ok(result);
     }
 
     /// <summary>
@@ -436,28 +336,19 @@ public class AuthController : ControllerBase
         [FromBody] EnableTwoFactorRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new EnableTwoFactorCommand(request.UserId, request.Enable);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new EnableTwoFactorCommand(request.UserId, request.Enable);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            if (result.IsEnabled == request.Enable)
-            {
-                var action = request.Enable ? "enabled" : "disabled";
-                _logger.LogInformation("Two-factor authentication {Action} for user {UserId}", action, request.UserId);
-                return Ok(result);
-            }
-
-            var actionFailed = request.Enable ? "enable" : "disable";
-            _logger.LogWarning("Failed to {Action} two-factor authentication for user {UserId}: {Message}", actionFailed, request.UserId, result.Message);
-            return BadRequest(result);
-        }
-        catch (Exception ex)
+        if (result.IsEnabled == request.Enable)
         {
-            var action = request.Enable ? "enabling" : "disabling";
-            _logger.LogError(ex, "Error {Action} two-factor authentication for user {UserId}", action, request.UserId);
-            return StatusCode(500, new { message = $"An error occurred while {action} two-factor authentication." });
+            var action = request.Enable ? "enabled" : "disabled";
+            _logger.LogInformation("Two-factor authentication {Action} for user {UserId}", action, request.UserId);
+            return Ok(result);
         }
+
+        var actionFailed = request.Enable ? "enable" : "disable";
+        _logger.LogWarning("Failed to {Action} two-factor authentication for user {UserId}: {Message}", actionFailed, request.UserId, result.Message);
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -469,25 +360,17 @@ public class AuthController : ControllerBase
         [FromBody] SendTwoFactorCodeRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new SendTwoFactorCodeCommand(request.Username);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new SendTwoFactorCodeCommand(request.Username);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            if (result.IsCodeSent)
-            {
-                _logger.LogInformation("Two-factor code sent for user {Username}", request.Username);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Failed to send two-factor code for user {Username}: {Message}", request.Username, result.Message);
-            return BadRequest(result);
-        }
-        catch (Exception ex)
+        if (result.IsCodeSent)
         {
-            _logger.LogError(ex, "Error sending two-factor code for user {Username}", request.Username);
-            return StatusCode(500, new { message = "An error occurred while sending the verification code." });
+            _logger.LogInformation("Two-factor code sent for user {Username}", request.Username);
+            return Ok(result);
         }
+
+        _logger.LogWarning("Failed to send two-factor code for user {Username}: {Message}", request.Username, result.Message);
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -499,25 +382,17 @@ public class AuthController : ControllerBase
         [FromBody] VerifyTwoFactorCodeRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var command = new VerifyTwoFactorCodeCommand(request.Username, request.Code);
-            var result = await _mediator.Send(command, cancellationToken);
+        var command = new VerifyTwoFactorCodeCommand(request.Username, request.Code);
+        var result = await _mediator.Send(command, cancellationToken);
 
-            if (result.IsVerified)
-            {
-                _logger.LogInformation("Two-factor verification successful for user {Username}", request.Username);
-                return Ok(result);
-            }
-
-            _logger.LogWarning("Two-factor verification failed for user {Username}: {Message}", request.Username, result.Message);
-            return BadRequest(result);
-        }
-        catch (Exception ex)
+        if (result.IsVerified)
         {
-            _logger.LogError(ex, "Error verifying two-factor code for user {Username}", request.Username);
-            return StatusCode(500, new { message = "An error occurred during verification." });
+            _logger.LogInformation("Two-factor verification successful for user {Username}", request.Username);
+            return Ok(result);
         }
+
+        _logger.LogWarning("Two-factor verification failed for user {Username}: {Message}", request.Username, result.Message);
+        return BadRequest(result);
     }
 
     /// <summary>
@@ -527,57 +402,49 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "GrantPermissions")]
     public async Task<IActionResult> BulkGrantPermissions([FromBody] BulkPermissionAssignmentRequest request)
     {
-        try
+        if (!ModelState.IsValid)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { message = "Invalid request data" });
-            }
-
-            var currentUser = User.Identity?.Name;
-
-            // Convert API model to service model
-            var permissions = request.Permissions.Select(p => new Application.Common.Models.RolePermissionMappingRequest
-            {
-                RoleName = p.RoleName,
-                PermissionName = p.PermissionName
-            }).ToList();
-
-            var result = await _permissionService.BulkGrantPermissionsAsync(permissions, currentUser);
-
-            _logger.LogInformation(
-                "Bulk permission grant operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
-                currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
-
-            if (result.IsFullySuccessful)
-            {
-                return Ok(new
-                {
-                    message = $"Successfully granted {result.SuccessfulOperations} permissions",
-                    details = result
-                });
-            }
-            else if (result.HasPartialSuccess)
-            {
-                return Ok(new
-                {
-                    message = $"Partial success: {result.SuccessfulOperations} granted, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
-                    details = result
-                });
-            }
-            else
-            {
-                return BadRequest(new
-                {
-                    message = $"Bulk grant failed: {string.Join(", ", result.ErrorMessages)}",
-                    details = result
-                });
-            }
+            return BadRequest(new { message = "Invalid request data" });
         }
-        catch (Exception ex)
+
+        var currentUser = User.Identity?.Name;
+
+        // Convert API model to service model
+        var permissions = request.Permissions.Select(p => new Application.Common.Models.RolePermissionMappingRequest
         {
-            _logger.LogError(ex, "Error during bulk permission grant");
-            return StatusCode(500, new { message = "Internal server error" });
+            RoleName = p.RoleName,
+            PermissionName = p.PermissionName
+        }).ToList();
+
+        var result = await _permissionService.BulkGrantPermissionsAsync(permissions, currentUser);
+
+        _logger.LogInformation(
+            "Bulk permission grant operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
+            currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
+
+        if (result.IsFullySuccessful)
+        {
+            return Ok(new
+            {
+                message = $"Successfully granted {result.SuccessfulOperations} permissions",
+                details = result
+            });
+        }
+        else if (result.HasPartialSuccess)
+        {
+            return Ok(new
+            {
+                message = $"Partial success: {result.SuccessfulOperations} granted, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
+                details = result
+            });
+        }
+        else
+        {
+            return BadRequest(new
+            {
+                message = $"Bulk grant failed: {string.Join(", ", result.ErrorMessages)}",
+                details = result
+            });
         }
     }
 
@@ -588,60 +455,170 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "RevokePermissions")]
     public async Task<IActionResult> BulkRevokePermissions([FromBody] BulkPermissionRemovalRequest request)
     {
-        try
+        if (!ModelState.IsValid)
         {
-            if (!ModelState.IsValid)
+            return BadRequest(new { message = "Invalid request data" });
+        }
+
+        var currentUser = User.Identity?.Name;
+
+        // Convert API model to service model
+        var permissions = request.Permissions.Select(p => new Application.Common.Models.RolePermissionMappingRequest
+        {
+            RoleName = p.RoleName,
+            PermissionName = p.PermissionName
+        }).ToList();
+
+        var result = await _permissionService.BulkRevokePermissionsAsync(permissions);
+
+        _logger.LogInformation(
+            "Bulk permission revoke operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
+            currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
+
+        if (result.IsFullySuccessful)
+        {
+            return Ok(new
             {
-                return BadRequest(new { message = "Invalid request data" });
+                message = $"Successfully revoked {result.SuccessfulOperations} permissions",
+                details = result
+            });
+        }
+        else if (result.HasPartialSuccess)
+        {
+            return Ok(new
+            {
+                message = $"Partial success: {result.SuccessfulOperations} revoked, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
+                details = result
+            });
+        }
+        else
+        {
+            return BadRequest(new
+            {
+                message = $"Bulk revoke failed: {string.Join(", ", result.ErrorMessages)}",
+                details = result
+            });
+        }
+    }
+
+    /// <summary>
+    /// Initiate Google OAuth login
+    /// </summary>
+    [HttpGet("google-login")]
+    [AllowAnonymous]
+    public IActionResult GoogleLogin(string returnUrl = "/")
+    {
+        var redirectUrl = Url.Action("GoogleCallback", "Auth", new { returnUrl });
+        var properties = _signInManager.ConfigureExternalAuthenticationProperties(GoogleDefaults.AuthenticationScheme, redirectUrl);
+        return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>
+    /// Handle Google OAuth callback
+    /// </summary>
+    [HttpGet("google-callback")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GoogleCallback(string returnUrl = "/")
+    {
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+        if (info == null)
+        {
+            _logger.LogWarning("External login info was null");
+            return BadRequest("Error loading external login information");
+        }
+
+        var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+        var name = info.Principal.FindFirstValue(ClaimTypes.Name);
+        var googleId = info.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(googleId))
+        {
+            _logger.LogWarning("Required claims missing from Google response");
+            return BadRequest("Required information missing from Google response");
+        }
+
+        var user = await _identityService.FindByEmailAsync(email);
+
+        if (user == null)
+        {
+            // Create new user
+            var names = name?.Split(' ') ?? new[] { email.Split('@')[0] };
+            var firstName = names.Length > 0 ? names[0] : email.Split('@')[0];
+            var lastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
+
+            var result = await _identityService.CreateUserAsync(
+                email,
+                email,
+                Guid.NewGuid().ToString(), // Random password since it won't be used
+                firstName,
+                lastName);
+
+            if (!result.Succeeded)
+            {
+                _logger.LogError("Failed to create user from Google login: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                return BadRequest("Failed to create user account");
             }
 
-            var currentUser = User.Identity?.Name;
-
-            // Convert API model to service model
-            var permissions = request.Permissions.Select(p => new Application.Common.Models.RolePermissionMappingRequest
+            user = await _identityService.FindByEmailAsync(email);
+            if (user == null)
             {
-                RoleName = p.RoleName,
-                PermissionName = p.PermissionName
-            }).ToList();
-
-            var result = await _permissionService.BulkRevokePermissionsAsync(permissions);
-
-            _logger.LogInformation(
-                "Bulk permission revoke operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
-                currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
-
-            if (result.IsFullySuccessful)
-            {
-                return Ok(new
-                {
-                    message = $"Successfully revoked {result.SuccessfulOperations} permissions",
-                    details = result
-                });
+                return BadRequest("Failed to retrieve created user");
             }
-            else if (result.HasPartialSuccess)
+
+            // Set Google-specific properties
+            user.GoogleId = googleId;
+            user.GoogleEmail = email;
+            user.IsGoogleAccount = true;
+            user.GoogleLinkedAt = DateTime.UtcNow;
+            user.EmailConfirmed = true; // Auto-confirm since Google verified it
+
+            await _identityService.UpdateUserAsync(user);
+        }
+        else
+        {
+            // Update existing user with Google info if not already linked
+            if (string.IsNullOrEmpty(user.GoogleId))
             {
-                return Ok(new
-                {
-                    message = $"Partial success: {result.SuccessfulOperations} revoked, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
-                    details = result
-                });
-            }
-            else
-            {
-                return BadRequest(new
-                {
-                    message = $"Bulk revoke failed: {string.Join(", ", result.ErrorMessages)}",
-                    details = result
-                });
+                user.GoogleId = googleId;
+                user.GoogleEmail = email;
+                user.IsGoogleAccount = true;
+                user.GoogleLinkedAt = DateTime.UtcNow;
+                await _identityService.UpdateUserAsync(user);
             }
         }
-        catch (Exception ex)
+
+        // Sign in the user
+        await _signInManager.SignInAsync(user, isPersistent: false);
+
+        // Generate JWT token
+        var roles = await _identityService.GetUserRolesAsync(user);
+        var token = _identityService.GenerateToken(user.UserName!, user.Email!, user.Id);
+
+        _logger.LogInformation("User {Email} successfully logged in via Google", email);
+
+        return Ok(new LoginResponse
         {
-            _logger.LogError(ex, "Error during bulk permission revoke");
-            return StatusCode(500, new { message = "Internal server error" });
-        }
+            Token = token,
+            Username = user.UserName!,
+            Email = user.Email!,
+            Roles = roles.ToList(),
+            Message = "Login successful"
+        });
+    }
+
+    /// <summary>
+    /// Verify Google token and check if user exists in database
+    /// </summary>
+    [HttpPost("verify-google-token")]
+    [AllowAnonymous]
+    public async Task<ActionResult<VerifyGoogleTokenResponse>> VerifyGoogleToken([FromBody] VerifyGoogleTokenRequest request)
+    {
+        var command = new VerifyGoogleTokenCommand(request.GoogleToken);
+        var response = await _mediator.Send(command);
+        return Ok(response);
     }
 }
 
 public record GrantPermissionRequest(string RoleName, string PermissionName);
 public record RevokePermissionRequest(string RoleName, string PermissionName);
+public record VerifyGoogleTokenRequest(string GoogleToken);

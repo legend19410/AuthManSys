@@ -6,16 +6,16 @@ namespace AuthManSys.Application.UserInformation.Queries;
 
 public class GetUserInformationQueryHandler : IRequestHandler<GetUserInformationQuery, UserInformationResponse>
 {
-    private readonly IAuthManSysDbContext _dbContext;
+    private readonly IUserRepository _userRepository;
 
-    public GetUserInformationQueryHandler(IAuthManSysDbContext dbContext)
+    public GetUserInformationQueryHandler(IUserRepository userRepository)
     {
-        _dbContext = dbContext;
+        _userRepository = userRepository;
     }
 
     public async Task<UserInformationResponse> Handle(GetUserInformationQuery request, CancellationToken cancellationToken)
     {
-        var result = await _dbContext.GetUserInformationAsync(request.UserId, cancellationToken);
+        var result = await _userRepository.GetUserInformationAsync(request.UserId, cancellationToken);
 
         if (result == null)
         {

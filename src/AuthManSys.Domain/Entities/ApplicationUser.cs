@@ -29,5 +29,12 @@ namespace AuthManSys.Domain.Entities
         public DateTime? TwoFactorCodeExpiration { get; set; }
         public bool IsTwoFactorEnabled { get; set; } = false;
         public DateTime? TwoFactorCodeGeneratedAt { get; set; }
+
+        // Google OAuth properties
+        public string? GoogleId { get; set; }
+        public string? GoogleEmail { get; set; }
+        public string? GooglePictureUrl { get; set; }
+        public bool IsGoogleAccount { get; set; } = false;
+        public DateTime? GoogleLinkedAt { get; set; }
     }
 }

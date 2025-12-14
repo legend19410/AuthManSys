@@ -32,4 +32,10 @@ public interface IIdentityService
     Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId);
     Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId);
     Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken);
+
+    // Google OAuth methods
+    Task<ApplicationUser?> GetUserByGoogleIdAsync(string googleId);
+    Task<ApplicationUser?> GetUserByEmailAsync(string email);
+    Task<IdentityResult> CreateUserFromGoogleAsync(string googleId, string email, string firstName, string lastName, string? pictureUrl);
+    Task<IdentityResult> LinkGoogleAccountAsync(ApplicationUser user, string googleId, string googleEmail, string? pictureUrl);
 }
