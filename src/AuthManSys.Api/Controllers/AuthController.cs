@@ -6,6 +6,8 @@ using AuthManSys.Application.RoleManagement.Commands;
 using AuthManSys.Application.RoleManagement.Queries;
 using AuthManSys.Application.TwoFactor.Commands;
 using AuthManSys.Application.GoogleAuth.Commands;
+using AuthManSys.Application.PermissionManagement.Commands;
+using AuthManSys.Application.PermissionManagement.Queries;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Interfaces;
@@ -26,26 +28,20 @@ namespace AuthManSys.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IPermissionService _permissionService;
     private readonly ILogger<AuthController> _logger;
     private readonly IIdentityService _identityService;
     private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly IGoogleTokenService _googleTokenService;
 
     public AuthController(
         IMediator mediator,
-        IPermissionService permissionService,
         ILogger<AuthController> logger,
         IIdentityService identityService,
-        SignInManager<ApplicationUser> signInManager,
-        IGoogleTokenService googleTokenService)
+        SignInManager<ApplicationUser> signInManager)
     {
         _mediator = mediator;
-        _permissionService = permissionService;
         _logger = logger;
         _identityService = identityService;
         _signInManager = signInManager;
-        _googleTokenService = googleTokenService;
     }
 
     [HttpPost("login")]
@@ -90,7 +86,8 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "ViewPermissions")]
     public async Task<IActionResult> GetAllPermissions()
     {
-        var permissions = await _permissionService.GetAllPermissionsDetailedAsync();
+        var query = new GetAllPermissionsQuery();
+        var permissions = await _mediator.Send(query);
         return Ok(permissions);
     }
 
@@ -101,7 +98,8 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "ViewPermissions")]
     public async Task<IActionResult> GetRolePermissionMappings()
     {
-        var mappings = await _permissionService.GetDetailedRolePermissionMappingsAsync();
+        var query = new GetRolePermissionMappingsQuery();
+        var mappings = await _mediator.Send(query);
         return Ok(mappings);
     }
 
@@ -113,10 +111,8 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> GrantPermission([FromBody] GrantPermissionRequest request)
     {
         var currentUser = User.Identity?.Name;
-        var wasGranted = await _permissionService.GrantPermissionToRoleByNameAsync(
-            request.RoleName,
-            request.PermissionName,
-            currentUser);
+        var command = new GrantPermissionCommand(request.RoleName, request.PermissionName, currentUser);
+        var wasGranted = await _mediator.Send(command);
 
         if (wasGranted)
         {
@@ -141,9 +137,8 @@ public class AuthController : ControllerBase
     [Authorize(Policy = "RevokePermissions")]
     public async Task<IActionResult> RevokePermission([FromBody] RevokePermissionRequest request)
     {
-        var wasRevoked = await _permissionService.RevokePermissionFromRoleByNameAsync(
-            request.RoleName,
-            request.PermissionName);
+        var command = new RevokePermissionCommand(request.RoleName, request.PermissionName);
+        var wasRevoked = await _mediator.Send(command);
 
         if (wasRevoked)
         {
@@ -174,7 +169,8 @@ public class AuthController : ControllerBase
             return BadRequest("User ID not found");
         }
 
-        var hasPermission = await _permissionService.UserHasPermissionAsync(userId, permissionName);
+        var query = new CheckPermissionQuery(userId, permissionName);
+        var hasPermission = await _mediator.Send(query);
         return Ok(new { hasPermission });
     }
 
@@ -191,7 +187,8 @@ public class AuthController : ControllerBase
             return BadRequest("User ID not found");
         }
 
-        var permissions = await _permissionService.GetUserPermissionsAsync(userId);
+        var query = new GetUserPermissionsQuery(userId);
+        var permissions = await _mediator.Send(query);
         return Ok(permissions);
     }
 
@@ -416,25 +413,27 @@ public class AuthController : ControllerBase
             PermissionName = p.PermissionName
         }).ToList();
 
-        var result = await _permissionService.BulkGrantPermissionsAsync(permissions, currentUser);
+        var command = new BulkGrantPermissionsCommand(permissions, currentUser);
+        var result = await _mediator.Send(command);
 
+        var dynamicResult = (dynamic)result;
         _logger.LogInformation(
             "Bulk permission grant operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
-            currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
+            currentUser, (int)dynamicResult.TotalOperations, (int)dynamicResult.SuccessfulOperations, (int)dynamicResult.SkippedOperations, (int)dynamicResult.FailedOperations);
 
-        if (result.IsFullySuccessful)
+        if (((dynamic)result).IsFullySuccessful)
         {
             return Ok(new
             {
-                message = $"Successfully granted {result.SuccessfulOperations} permissions",
+                message = $"Successfully granted {((dynamic)result).SuccessfulOperations} permissions",
                 details = result
             });
         }
-        else if (result.HasPartialSuccess)
+        else if (((dynamic)result).HasPartialSuccess)
         {
             return Ok(new
             {
-                message = $"Partial success: {result.SuccessfulOperations} granted, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
+                message = $"Partial success: {((dynamic)result).SuccessfulOperations} granted, {((dynamic)result).SkippedOperations} skipped, {((dynamic)result).FailedOperations} failed",
                 details = result
             });
         }
@@ -442,7 +441,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new
             {
-                message = $"Bulk grant failed: {string.Join(", ", result.ErrorMessages)}",
+                message = $"Bulk grant failed: {string.Join(", ", ((dynamic)result).ErrorMessages)}",
                 details = result
             });
         }
@@ -469,25 +468,27 @@ public class AuthController : ControllerBase
             PermissionName = p.PermissionName
         }).ToList();
 
-        var result = await _permissionService.BulkRevokePermissionsAsync(permissions);
+        var command = new BulkRevokePermissionsCommand(permissions);
+        var result = await _mediator.Send(command);
 
+        var dynamicResult = (dynamic)result;
         _logger.LogInformation(
             "Bulk permission revoke operation completed by {User}: {Total} total, {Success} successful, {Skipped} skipped, {Failed} failed",
-            currentUser, result.TotalOperations, result.SuccessfulOperations, result.SkippedOperations, result.FailedOperations);
+            currentUser, (int)dynamicResult.TotalOperations, (int)dynamicResult.SuccessfulOperations, (int)dynamicResult.SkippedOperations, (int)dynamicResult.FailedOperations);
 
-        if (result.IsFullySuccessful)
+        if (((dynamic)result).IsFullySuccessful)
         {
             return Ok(new
             {
-                message = $"Successfully revoked {result.SuccessfulOperations} permissions",
+                message = $"Successfully revoked {((dynamic)result).SuccessfulOperations} permissions",
                 details = result
             });
         }
-        else if (result.HasPartialSuccess)
+        else if (((dynamic)result).HasPartialSuccess)
         {
             return Ok(new
             {
-                message = $"Partial success: {result.SuccessfulOperations} revoked, {result.SkippedOperations} skipped, {result.FailedOperations} failed",
+                message = $"Partial success: {((dynamic)result).SuccessfulOperations} revoked, {((dynamic)result).SkippedOperations} skipped, {((dynamic)result).FailedOperations} failed",
                 details = result
             });
         }
@@ -495,7 +496,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new
             {
-                message = $"Bulk revoke failed: {string.Join(", ", result.ErrorMessages)}",
+                message = $"Bulk revoke failed: {string.Join(", ", ((dynamic)result).ErrorMessages)}",
                 details = result
             });
         }
