@@ -5,15 +5,15 @@ namespace AuthManSys.Application.PermissionManagement.Queries;
 
 public class CheckPermissionQueryHandler : IRequestHandler<CheckPermissionQuery, bool>
 {
-    private readonly IPermissionService _permissionService;
+    private readonly IPermissionRepository _permissionRepository;
 
-    public CheckPermissionQueryHandler(IPermissionService permissionService)
+    public CheckPermissionQueryHandler(IPermissionRepository permissionRepository)
     {
-        _permissionService = permissionService;
+        _permissionRepository = permissionRepository;
     }
 
     public async Task<bool> Handle(CheckPermissionQuery request, CancellationToken cancellationToken)
     {
-        return await _permissionService.UserHasPermissionAsync(request.UserId, request.PermissionName);
+        return await _permissionRepository.UserHasPermissionAsync(request.UserId, request.PermissionName);
     }
 }

@@ -8,14 +8,14 @@ namespace AuthManSys.Application.TwoFactor.Commands;
 
 public class EnableTwoFactorCommandHandler : IRequestHandler<EnableTwoFactorCommand, EnableTwoFactorResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<EnableTwoFactorCommandHandler> _logger;
 
     public EnableTwoFactorCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
         ILogger<EnableTwoFactorCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -23,7 +23,7 @@ public class EnableTwoFactorCommandHandler : IRequestHandler<EnableTwoFactorComm
     {
         try
         {
-            var user = await _identityExtension.FindByUserIdAsync(request.UserId);
+            var user = await _userRepository.GetByUserIdAsync(request.UserId);
             if (user == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", request.UserId);
@@ -35,8 +35,8 @@ public class EnableTwoFactorCommandHandler : IRequestHandler<EnableTwoFactorComm
             }
 
             var result = request.Enable
-                ? await _identityExtension.EnableTwoFactorAsync(user)
-                : await _identityExtension.DisableTwoFactorAsync(user);
+                ? await _userRepository.EnableTwoFactorAsync(user)
+                : await _userRepository.DisableTwoFactorAsync(user);
 
             if (result.Succeeded)
             {

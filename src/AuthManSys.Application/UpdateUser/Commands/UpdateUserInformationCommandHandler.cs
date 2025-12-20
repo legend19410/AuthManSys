@@ -7,14 +7,14 @@ namespace AuthManSys.Application.UpdateUser.Commands;
 
 public class UpdateUserInformationCommandHandler : IRequestHandler<UpdateUserInformationCommand, UpdateUserInformationResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<UpdateUserInformationCommandHandler> _logger;
 
     public UpdateUserInformationCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
         ILogger<UpdateUserInformationCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -22,10 +22,11 @@ public class UpdateUserInformationCommandHandler : IRequestHandler<UpdateUserInf
     {
         try
         {
-            var user = await _identityExtension.FindByUserNameAsync(request.Username);
+            // Find the user first
+            var user = await _userRepository.GetByUsernameAsync(request.Username);
             if (user == null)
             {
-                _logger.LogWarning("User with username {Username} not found for update", request.Username);
+                _logger.LogWarning("User {Username} not found", request.Username);
                 return new UpdateUserInformationResponse
                 {
                     IsUpdated = false,
@@ -33,54 +34,13 @@ public class UpdateUserInformationCommandHandler : IRequestHandler<UpdateUserInf
                 };
             }
 
-            bool hasChanges = false;
+            // Update user information
+            user.FirstName = request.FirstName ?? string.Empty;
+            user.LastName = request.LastName ?? string.Empty;
+            user.Email = request.Email ?? string.Empty;
+            user.NormalizedEmail = request.Email?.ToUpperInvariant() ?? string.Empty;
 
-            if (!string.IsNullOrWhiteSpace(request.FirstName) && user.FirstName != request.FirstName)
-            {
-                user.FirstName = request.FirstName;
-                hasChanges = true;
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.LastName) && user.LastName != request.LastName)
-            {
-                user.LastName = request.LastName;
-                hasChanges = true;
-            }
-
-            if (!string.IsNullOrWhiteSpace(request.Email) && user.Email != request.Email)
-            {
-                var existingUser = await _identityExtension.FindByEmailAsync(request.Email);
-                if (existingUser != null && existingUser.Id != user.Id)
-                {
-                    _logger.LogWarning("Email {Email} is already in use by another user", request.Email);
-                    return new UpdateUserInformationResponse
-                    {
-                        IsUpdated = false,
-                        Message = "Email address is already in use"
-                    };
-                }
-
-                user.Email = request.Email;
-                user.NormalizedEmail = request.Email.ToUpper();
-                user.UserName = request.Email;
-                user.NormalizedUserName = request.Email.ToUpper();
-                hasChanges = true;
-            }
-
-            if (!hasChanges)
-            {
-                return new UpdateUserInformationResponse
-                {
-                    IsUpdated = true,
-                    Message = "No changes detected",
-                    Username = user.UserName,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Email = user.Email
-                };
-            }
-
-            var result = await _identityExtension.UpdateUserAsync(user);
+            var result = await _userRepository.UpdateAsync(user);
 
             if (result.Succeeded)
             {
@@ -89,10 +49,10 @@ public class UpdateUserInformationCommandHandler : IRequestHandler<UpdateUserInf
                 {
                     IsUpdated = true,
                     Message = "User information updated successfully",
-                    Username = user.UserName,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    Email = user.Email
+                    Username = request.Username,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    Email = request.Email
                 };
             }
 

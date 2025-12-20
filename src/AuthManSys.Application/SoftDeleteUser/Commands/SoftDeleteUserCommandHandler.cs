@@ -8,14 +8,14 @@ namespace AuthManSys.Application.SoftDeleteUser.Commands;
 
 public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserCommand, SoftDeleteUserResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<SoftDeleteUserCommandHandler> _logger;
 
     public SoftDeleteUserCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
         ILogger<SoftDeleteUserCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -23,10 +23,11 @@ public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserComman
     {
         try
         {
-            var user = await _identityExtension.FindByUserNameAsync(request.Username);
+            // Find the user first
+            var user = await _userRepository.GetByUsernameAsync(request.Username);
             if (user == null)
             {
-                _logger.LogWarning("User with username {Username} not found for soft delete", request.Username);
+                _logger.LogWarning("User {Username} not found for soft delete", request.Username);
                 return new SoftDeleteUserResponse
                 {
                     IsDeleted = false,
@@ -34,22 +35,7 @@ public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserComman
                 };
             }
 
-            if (user.IsDeleted)
-            {
-                _logger.LogWarning("User {Username} is already deleted", request.Username);
-                return new SoftDeleteUserResponse
-                {
-                    IsDeleted = false,
-                    Message = "User is already deleted"
-                };
-            }
-
-            // Perform soft delete
-            user.IsDeleted = true;
-            user.DeletedAt = JamaicaTimeHelper.Now;
-            user.DeletedBy = request.DeletedBy;
-
-            var result = await _identityExtension.UpdateUserAsync(user);
+            var result = await _userRepository.SoftDeleteAsync(user, request.DeletedBy);
 
             if (result.Succeeded)
             {
@@ -58,9 +44,9 @@ public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserComman
                 {
                     IsDeleted = true,
                     Message = "User soft deleted successfully",
-                    Username = user.UserName,
-                    DeletedAt = user.DeletedAt,
-                    DeletedBy = user.DeletedBy
+                    Username = request.Username,
+                    DeletedAt = JamaicaTimeHelper.Now,
+                    DeletedBy = request.DeletedBy
                 };
             }
 

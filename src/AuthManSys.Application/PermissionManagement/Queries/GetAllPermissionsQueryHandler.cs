@@ -5,15 +5,16 @@ namespace AuthManSys.Application.PermissionManagement.Queries;
 
 public class GetAllPermissionsQueryHandler : IRequestHandler<GetAllPermissionsQuery, object>
 {
-    private readonly IPermissionService _permissionService;
+    private readonly IPermissionRepository _permissionRepository;
 
-    public GetAllPermissionsQueryHandler(IPermissionService permissionService)
+    public GetAllPermissionsQueryHandler(IPermissionRepository permissionRepository)
     {
-        _permissionService = permissionService;
+        _permissionRepository = permissionRepository;
     }
 
     public async Task<object> Handle(GetAllPermissionsQuery request, CancellationToken cancellationToken)
     {
-        return await _permissionService.GetAllPermissionsDetailedAsync();
+        var permissions = await _permissionRepository.GetAllAsync();
+        return permissions;
     }
 }

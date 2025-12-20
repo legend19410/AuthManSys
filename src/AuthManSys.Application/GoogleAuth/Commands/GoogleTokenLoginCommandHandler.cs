@@ -12,18 +12,18 @@ namespace AuthManSys.Application.GoogleAuth.Commands;
 public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCommand, LoginResponse>
 {
     private readonly IGoogleTokenService _googleTokenService;
-    private readonly IIdentityService _identityService;
+    private readonly IIdentityProvider _identityProvider;
     private readonly IActivityLogService _activityLogService;
     private readonly ILogger<GoogleTokenLoginCommandHandler> _logger;
 
     public GoogleTokenLoginCommandHandler(
         IGoogleTokenService googleTokenService,
-        IIdentityService identityService,
+        IIdentityProvider identityProvider,
         IActivityLogService activityLogService,
         ILogger<GoogleTokenLoginCommandHandler> logger)
     {
         _googleTokenService = googleTokenService;
-        _identityService = identityService;
+        _identityProvider = identityProvider;
         _activityLogService = activityLogService;
         _logger = logger;
     }
@@ -49,16 +49,17 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
         // If username is provided, check if user exists by username first
         if (!string.IsNullOrWhiteSpace(request.Username))
         {
-            user = await _identityService.FindByUserNameAsync(request.Username);
+            user = await _identityProvider.FindByUserNameAsync(request.Username);
         }
 
         if (user == null)
         {
             // Try to find by Google ID or email from token
-            user = await _identityService.GetUserByGoogleIdAsync(googlePayload.Subject);
+            // TODO: Need GetUserByGoogleIdAsync method in IIdentityProvider
+            // user = await _identityProvider.GetUserByGoogleIdAsync(googlePayload.Subject);
             if (user == null)
             {
-                user = await _identityService.GetUserByEmailAsync(googlePayload.Email);
+                user = await _identityProvider.FindByEmailAsync(googlePayload.Email);
             }
         }
 
@@ -70,7 +71,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
                 ? request.Username
                 : googlePayload.Email;
 
-            var createUserResult = await _identityService.CreateUserAsync(
+            var createUserResult = await _identityProvider.CreateUserAsync(
                 username,
                 googlePayload.Email,
                 Guid.NewGuid().ToString(), // Random password since it won't be used for Google auth
@@ -93,7 +94,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
                 throw new UnauthorizedException($"Failed to create user: {string.Join(", ", createUserResult.Errors.Select(e => e.Description))}");
             }
 
-            user = await _identityService.FindByUserNameAsync(username);
+            user = await _identityProvider.FindByUserNameAsync(username);
             if (user == null)
             {
                 throw new UnauthorizedException("Failed to retrieve created user");
@@ -106,7 +107,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
             user.GoogleLinkedAt = JamaicaTimeHelper.Now;
             user.EmailConfirmed = true; // Auto-confirm since Google verified it
 
-            await _identityService.UpdateUserAsync(user);
+            await _identityProvider.UpdateUserAsync(user);
 
             await _activityLogService.LogActivityAsync(
                 userId: user.UserId,
@@ -123,7 +124,15 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
         else if (user.GoogleId != googlePayload.Subject)
         {
             // Link Google account to existing user
-            await _identityService.LinkGoogleAccountAsync(user, googlePayload.Subject, googlePayload.Email, googlePayload.Picture);
+            // TODO: Need LinkGoogleAccountAsync method or separate service
+            // _identityProvider.LinkGoogleAccountAsync(user, googlePayload.Subject, googlePayload.Email, googlePayload.Picture);
+
+            // For now, update the user's Google properties directly
+            user.GoogleId = googlePayload.Subject;
+            user.GoogleEmail = googlePayload.Email;
+            user.IsGoogleAccount = true;
+            user.GoogleLinkedAt = JamaicaTimeHelper.Now;
+            await _identityProvider.UpdateUserAsync(user);
 
             await _activityLogService.LogActivityAsync(
                 userId: user.UserId,
@@ -139,13 +148,13 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
 
         // Update last login timestamp
         user.LastLoginAt = JamaicaTimeHelper.Now;
-        await _identityService.UpdateUserAsync(user);
+        await _identityProvider.UpdateUserAsync(user);
 
         // Get user roles
-        var roles = await _identityService.GetUserRolesAsync(user);
+        var roles = await _identityProvider.GetUserRolesAsync(user);
 
         // Generate JWT token
-        var token = _identityService.GenerateToken(user.UserName!, user.Email!, user.Id);
+        var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
 
         // Log successful login
         await _activityLogService.LogActivityAsync(

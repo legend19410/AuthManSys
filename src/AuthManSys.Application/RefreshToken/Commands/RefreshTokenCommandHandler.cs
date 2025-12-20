@@ -9,14 +9,17 @@ namespace AuthManSys.Application.RefreshToken.Commands;
 
 public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, RefreshTokenResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
+    private readonly IIdentityProvider _identityProvider;
     private readonly ILogger<RefreshTokenCommandHandler> _logger;
 
     public RefreshTokenCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
+        IIdentityProvider identityProvider,
         ILogger<RefreshTokenCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
+        _identityProvider = identityProvider;
         _logger = logger;
     }
 
@@ -25,7 +28,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         try
         {
             // Get user by refresh token
-            var user = await _identityExtension.GetUserByRefreshTokenAsync(request.RefreshToken);
+            var user = await _userRepository.GetUserByRefreshTokenAsync(request.RefreshToken);
             if (user == null)
             {
                 _logger.LogWarning("Invalid refresh token provided");
@@ -38,11 +41,11 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
 
             // Generate new JWT token
             var jwtTokenHandler = new JwtSecurityTokenHandler();
-            var newToken = _identityExtension.GenerateToken(user.UserName!, user.Email!, user.Id);
+            var newToken = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
             var newJwtToken = jwtTokenHandler.ReadJwtToken(newToken);
 
             // Validate the current refresh token
-            var isValidRefreshToken = await _identityExtension.ValidateRefreshTokenAsync(
+            var isValidRefreshToken = await _userRepository.ValidateRefreshTokenAsync(
                 request.RefreshToken,
                 newJwtToken.Id);
 
@@ -57,7 +60,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             }
 
             // Generate new refresh token
-            var newRefreshToken = await _identityExtension.GenerateRefreshTokenAsync(user, newJwtToken.Id);
+            var newRefreshToken = await _userRepository.GenerateRefreshTokenAsync(user, newJwtToken.Id);
 
             _logger.LogInformation("Token refreshed successfully for user {UserId}", user.UserId);
 

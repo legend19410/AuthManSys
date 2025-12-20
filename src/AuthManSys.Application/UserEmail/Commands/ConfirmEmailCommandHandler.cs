@@ -6,17 +6,21 @@ namespace AuthManSys.Application.UserEmail.Commands;
 
 public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, ConfirmEmailResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
+    private readonly IIdentityProvider _identityProvider;
 
-    public ConfirmEmailCommandHandler(IIdentityService identityExtension)
+    public ConfirmEmailCommandHandler(
+        IUserRepository userRepository,
+        IIdentityProvider identityProvider)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
+        _identityProvider = identityProvider;
     }
 
     public async Task<ConfirmEmailResponse> Handle(ConfirmEmailCommand request, CancellationToken cancellationToken)
     {
         // Find the user
-        var user = await _identityExtension.FindByUserNameAsync(request.Username);
+        var user = await _userRepository.GetByUsernameAsync(request.Username);
         if (user == null)
         {
             return new ConfirmEmailResponse
@@ -29,7 +33,7 @@ public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, C
         }
 
         // Check if email is already confirmed
-        if (await _identityExtension.IsEmailConfirmedAsync(request.Username))
+        if (await _userRepository.IsEmailConfirmedAsync(user))
         {
             return new ConfirmEmailResponse
             {
@@ -41,7 +45,7 @@ public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, C
         }
 
         // Confirm the email with the provided token
-        var result = await _identityExtension.ConfirmEmailAsync(request.Username, request.Token);
+        var result = await _userRepository.ConfirmEmailAsync(user, request.Token);
 
         if (result.Succeeded)
         {

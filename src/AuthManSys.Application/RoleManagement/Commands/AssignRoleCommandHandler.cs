@@ -8,14 +8,17 @@ namespace AuthManSys.Application.RoleManagement.Commands;
 
 public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, AssignRoleResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly ILogger<AssignRoleCommandHandler> _logger;
 
     public AssignRoleCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
+        IRoleRepository roleRepository,
         ILogger<AssignRoleCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
+        _roleRepository = roleRepository;
         _logger = logger;
     }
 
@@ -24,7 +27,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
         try
         {
             // Find user by ID
-            var user = await _identityExtension.FindByUserIdAsync(request.UserId);
+            var user = await _userRepository.GetByUserIdAsync(request.UserId);
             if (user == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", request.UserId);
@@ -39,7 +42,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
             }
 
             // Check if role exists
-            if (!await _identityExtension.RoleExistsAsync(request.RoleName))
+            if (!await _roleRepository.RoleExistsAsync(request.RoleName))
             {
                 _logger.LogWarning("Role {RoleName} does not exist", request.RoleName);
                 return new AssignRoleResponse
@@ -53,7 +56,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
             }
 
             // Check if user already has the role
-            var userRoles = await _identityExtension.GetUserRolesAsync(user);
+            var userRoles = await _userRepository.GetRolesAsync(user);
             if (userRoles.Contains(request.RoleName))
             {
                 _logger.LogWarning("User {UserId} already has role {RoleName}", request.UserId, request.RoleName);
@@ -67,7 +70,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
                 };
             }
 
-            var result = await _identityExtension.AddToRoleAsync(user, request.RoleName, request.AssignedBy);
+            var result = await _userRepository.AddToRoleAsync(user, request.RoleName, request.AssignedBy);
 
             if (result.Succeeded)
             {

@@ -13,17 +13,17 @@ namespace AuthManSys.Application.Login.Commands;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
-    private readonly IIdentityService _identityService;
+    private readonly IIdentityProvider _identityProvider;
     private readonly IActivityLogService _activityLogService;
     private readonly IMediator _mediator;
 
     public LoginCommandHandler(
-        IIdentityService identityService,
+        IIdentityProvider identityProvider,
         IActivityLogService activityLogService,
         IMediator mediator
     )
     {
-        _identityService = identityService;
+        _identityProvider = identityProvider;
         _activityLogService = activityLogService;
         _mediator = mediator;
     }
@@ -31,7 +31,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         // Find the user
-        var user = await _identityService.FindByUserNameAsync(request.Username);
+        var user = await _identityProvider.FindByUserNameAsync(request.Username);
         if (user == null)
         {
             // Log failed login attempt
@@ -46,7 +46,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         // Verify password
-        var isPasswordValid = await _identityService.CheckPasswordAsync(user, request.Password);
+        var isPasswordValid = await _identityProvider.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
         {
             // Log failed login attempt
@@ -61,7 +61,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         // Check if email is confirmed
-        var isEmailConfirmed = await _identityService.IsEmailConfirmedAsync(request.Username);
+        var isEmailConfirmed = await _identityProvider.IsEmailConfirmedAsync(user);
         if (!isEmailConfirmed)
         {
             throw new UnauthorizedException("Email address is not confirmed");
@@ -106,14 +106,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
         // Update last login timestamp
         user.LastLoginAt = JamaicaTimeHelper.Now;
-        await _identityService.UpdateUserAsync(user);
+        await _identityProvider.UpdateUserAsync(user);
 
         // Get user roles
-        var roles = await _identityService.GetUserRolesAsync(user);
+        var roles = await _identityProvider.GetUserRolesAsync(user);
         var role = roles.FirstOrDefault() ?? "User";
 
         //generate token
-        var token = _identityService.GenerateToken(user.UserName, user.Email, user.Id);
+        var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
         string? refreshToken = null;
         DateTime? refreshTokenExpiration = null;
 
@@ -122,7 +122,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var jwtToken = jwtTokenHandler.ReadJwtToken(token);
-            refreshToken = await _identityService.GenerateRefreshTokenAsync(user, jwtToken.Id);
+            refreshToken = await _identityProvider.GenerateRefreshTokenAsync(user, jwtToken.Id);
             refreshTokenExpiration = JamaicaTimeHelper.Now.AddDays(30); // This should match your JWT settings
         }
 

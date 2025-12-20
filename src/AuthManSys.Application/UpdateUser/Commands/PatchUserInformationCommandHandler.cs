@@ -7,14 +7,14 @@ namespace AuthManSys.Application.UpdateUser.Commands;
 
 public class PatchUserInformationCommandHandler : IRequestHandler<PatchUserInformationCommand, UpdateUserInformationResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<PatchUserInformationCommandHandler> _logger;
 
     public PatchUserInformationCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
         ILogger<PatchUserInformationCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -22,7 +22,7 @@ public class PatchUserInformationCommandHandler : IRequestHandler<PatchUserInfor
     {
         try
         {
-            var user = await _identityExtension.FindByUserNameAsync(request.Username);
+            var user = await _userRepository.GetByUsernameAsync(request.Username);
             if (user == null)
             {
                 _logger.LogWarning("User with username {Username} not found for patch update", request.Username);
@@ -50,7 +50,7 @@ public class PatchUserInformationCommandHandler : IRequestHandler<PatchUserInfor
 
             if (request.UpdateEmail && !string.IsNullOrWhiteSpace(request.Email) && user.Email != request.Email)
             {
-                var existingUser = await _identityExtension.FindByEmailAsync(request.Email);
+                var existingUser = await _userRepository.GetByEmailAsync(request.Email);
                 if (existingUser != null && existingUser.Id != user.Id)
                 {
                     _logger.LogWarning("Email {Email} is already in use by another user during patch update", request.Email);
@@ -81,7 +81,7 @@ public class PatchUserInformationCommandHandler : IRequestHandler<PatchUserInfor
                 };
             }
 
-            var result = await _identityExtension.UpdateUserAsync(user);
+            var result = await _userRepository.UpdateAsync(user);
 
             if (result.Succeeded)
             {

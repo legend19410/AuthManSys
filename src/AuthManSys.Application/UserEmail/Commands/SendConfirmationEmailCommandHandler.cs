@@ -6,21 +6,21 @@ namespace AuthManSys.Application.UserEmail.Commands;
 
 public class SendConfirmationEmailCommandHandler : IRequestHandler<SendConfirmationEmailCommand, SendEmailResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
 
     public SendConfirmationEmailCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
         IEmailService emailService)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
         _emailService = emailService;
     }
 
     public async Task<SendEmailResponse> Handle(SendConfirmationEmailCommand request, CancellationToken cancellationToken)
     {
         // Find the user
-        var user = await _identityExtension.FindByUserNameAsync(request.Username);
+        var user = await _userRepository.GetByUsernameAsync(request.Username);
         if (user == null)
         {
             return new SendEmailResponse
@@ -32,7 +32,7 @@ public class SendConfirmationEmailCommandHandler : IRequestHandler<SendConfirmat
         }
 
         // Check if email is already confirmed
-        if (await _identityExtension.IsEmailConfirmedAsync(request.Username))
+        if (await _userRepository.IsEmailConfirmedAsync(user))
         {
             return new SendEmailResponse
             {
@@ -45,10 +45,7 @@ public class SendConfirmationEmailCommandHandler : IRequestHandler<SendConfirmat
         try
         {
             // Generate email confirmation token
-            var token = await _identityExtension.GenerateEmailConfirmationTokenAsync(request.Username);
-
-            // Update the token in the database
-            await _identityExtension.UpdateEmailConfirmationTokenAsync(request.Username, token);
+            var token = await _userRepository.GenerateEmailConfirmationTokenAsync(user);
 
             // Send the confirmation email
             await _emailService.SendEmailConfirmationAsync(

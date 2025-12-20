@@ -8,14 +8,14 @@ namespace AuthManSys.Application.RoleManagement.Commands;
 
 public class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand, CreateRoleResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IRoleRepository _roleRepository;
     private readonly ILogger<CreateRoleCommandHandler> _logger;
 
     public CreateRoleCommandHandler(
-        IIdentityService identityExtension,
+        IRoleRepository roleRepository,
         ILogger<CreateRoleCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _roleRepository = roleRepository;
         _logger = logger;
     }
 
@@ -24,7 +24,7 @@ public class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand, Creat
         try
         {
             // Check if role already exists
-            if (await _identityExtension.RoleExistsAsync(request.RoleName))
+            if (await _roleRepository.RoleExistsAsync(request.RoleName))
             {
                 _logger.LogWarning("Role {RoleName} already exists", request.RoleName);
                 return new CreateRoleResponse
@@ -34,7 +34,7 @@ public class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand, Creat
                 };
             }
 
-            var result = await _identityExtension.CreateRoleAsync(request.RoleName, request.Description);
+            var result = await _roleRepository.CreateAsync(request.RoleName, request.Description);
 
             if (result.Succeeded)
             {

@@ -8,14 +8,17 @@ namespace AuthManSys.Application.RoleManagement.Commands;
 
 public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, RemoveRoleResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
+    private readonly IRoleRepository _roleRepository;
     private readonly ILogger<RemoveRoleCommandHandler> _logger;
 
     public RemoveRoleCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
+        IRoleRepository roleRepository,
         ILogger<RemoveRoleCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
+        _roleRepository = roleRepository;
         _logger = logger;
     }
 
@@ -24,7 +27,7 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
         try
         {
             // Find user by ID
-            var user = await _identityExtension.FindByUserIdAsync(request.UserId);
+            var user = await _userRepository.GetByUserIdAsync(request.UserId);
             if (user == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", request.UserId);
@@ -39,7 +42,7 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
             }
 
             // Check if role exists
-            if (!await _identityExtension.RoleExistsAsync(request.RoleName))
+            if (!await _roleRepository.RoleExistsAsync(request.RoleName))
             {
                 _logger.LogWarning("Role {RoleName} does not exist", request.RoleName);
                 return new RemoveRoleResponse
@@ -53,7 +56,7 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
             }
 
             // Check if user has the role
-            var userRoles = await _identityExtension.GetUserRolesAsync(user);
+            var userRoles = await _userRepository.GetRolesAsync(user);
             if (!userRoles.Contains(request.RoleName))
             {
                 _logger.LogWarning("User {UserId} does not have role {RoleName}", request.UserId, request.RoleName);
@@ -67,7 +70,7 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
                 };
             }
 
-            var result = await _identityExtension.RemoveFromRoleAsync(user, request.RoleName);
+            var result = await _userRepository.RemoveFromRoleAsync(user, request.RoleName);
 
             if (result.Succeeded)
             {

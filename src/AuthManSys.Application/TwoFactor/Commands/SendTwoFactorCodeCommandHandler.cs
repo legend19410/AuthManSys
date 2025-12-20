@@ -8,20 +8,20 @@ namespace AuthManSys.Application.TwoFactor.Commands;
 
 public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCodeCommand, SendTwoFactorCodeResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
     private readonly ITwoFactorService _twoFactorService;
     private readonly IEmailService _emailService;
     private readonly IActivityLogService _activityLogService;
     private readonly ILogger<SendTwoFactorCodeCommandHandler> _logger;
 
     public SendTwoFactorCodeCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
         ITwoFactorService twoFactorService,
         IEmailService emailService,
         IActivityLogService activityLogService,
         ILogger<SendTwoFactorCodeCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
         _twoFactorService = twoFactorService;
         _emailService = emailService;
         _activityLogService = activityLogService;
@@ -32,7 +32,7 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
     {
         try
         {
-            var user = await _identityExtension.FindByUserNameAsync(request.Username);
+            var user = await _userRepository.GetByUsernameAsync(request.Username);
             if (user == null)
             {
                 _logger.LogWarning("User {Username} not found", request.Username);
@@ -76,7 +76,7 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
             var expiration = _twoFactorService.GetCodeExpiration();
 
             // Update user with new code
-            var result = await _identityExtension.UpdateTwoFactorCodeAsync(user, code, expiration);
+            var result = await _userRepository.UpdateTwoFactorCodeAsync(user, code, expiration);
             if (!result.Succeeded)
             {
                 _logger.LogError("Failed to update two-factor code for user {Username}: {Errors}",

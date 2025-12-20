@@ -8,16 +8,19 @@ namespace AuthManSys.Application.TwoFactor.Commands;
 
 public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactorCodeCommand, VerifyTwoFactorCodeResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
+    private readonly IIdentityProvider _identityProvider;
     private readonly ITwoFactorService _twoFactorService;
     private readonly ILogger<VerifyTwoFactorCodeCommandHandler> _logger;
 
     public VerifyTwoFactorCodeCommandHandler(
-        IIdentityService identityExtension,
+        IUserRepository userRepository,
+        IIdentityProvider identityProvider,
         ITwoFactorService twoFactorService,
         ILogger<VerifyTwoFactorCodeCommandHandler> logger)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
+        _identityProvider = identityProvider;
         _twoFactorService = twoFactorService;
         _logger = logger;
     }
@@ -26,7 +29,7 @@ public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactor
     {
         try
         {
-            var user = await _identityExtension.FindByUserNameAsync(request.Username);
+            var user = await _userRepository.GetByUsernameAsync(request.Username);
             if (user == null)
             {
                 _logger.LogWarning("User {Username} not found", request.Username);
@@ -64,7 +67,7 @@ public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactor
             }
 
             // Clear the two-factor code after successful verification
-            var clearResult = await _identityExtension.UpdateTwoFactorCodeAsync(user, string.Empty, JamaicaTimeHelper.Now);
+            var clearResult = await _userRepository.UpdateTwoFactorCodeAsync(user, string.Empty, JamaicaTimeHelper.Now);
             if (!clearResult.Succeeded)
             {
                 _logger.LogWarning("Failed to clear two-factor code for user {Username}", request.Username);
@@ -72,10 +75,10 @@ public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactor
 
             // Update last login timestamp
             user.LastLoginAt = JamaicaTimeHelper.Now;
-            await _identityExtension.UpdateUserAsync(user);
+            await _userRepository.UpdateAsync(user);
 
             // Generate access token
-            var token = _identityExtension.GenerateToken(user.UserName!, user.Email!, user.Id);
+            var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
 
             _logger.LogInformation("Two-factor authentication successful for user {Username}", request.Username);
             return new VerifyTwoFactorCodeResponse

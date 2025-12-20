@@ -6,14 +6,14 @@ namespace AuthManSys.Infrastructure.Authorization;
 
 public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
-    private readonly IPermissionService _permissionService;
+    private readonly IPermissionRepository _permissionRepository;
     private readonly ILogger<PermissionAuthorizationHandler> _logger;
 
     public PermissionAuthorizationHandler(
-        IPermissionService permissionService,
+        IPermissionRepository permissionRepository,
         ILogger<PermissionAuthorizationHandler> logger)
     {
-        _permissionService = permissionService;
+        _permissionRepository = permissionRepository;
         _logger = logger;
     }
 
@@ -46,7 +46,7 @@ public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionReq
 
         try
         {
-            var hasPermission = await _permissionService.UserHasPermissionAsync(userId, requirement.Permission);
+            var hasPermission = await _permissionRepository.UserHasPermissionAsync(userId, requirement.Permission);
             _logger.LogDebug("Permission check result: {HasPermission} for user {UserId} and permission {Permission}",
                 hasPermission, userId, requirement.Permission);
 

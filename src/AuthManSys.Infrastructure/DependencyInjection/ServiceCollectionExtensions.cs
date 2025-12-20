@@ -11,6 +11,7 @@ using AuthManSys.Domain.Entities;
 using AuthManSys.Infrastructure.Services;
 using AuthManSys.Infrastructure.Authorization;
 using AuthManSys.Infrastructure.Database.Repositories;
+using AuthManSys.Infrastructure.Identity;
 
 namespace AuthManSys.Infrastructure.DependencyInjection;
 
@@ -80,12 +81,10 @@ public static class ServiceCollectionExtensions
 
         // DbContext is now encapsulated within repositories
 
-        // Add Identity Service
-        services.AddScoped<IdentityService>();
-        services.AddScoped<IIdentityService, IdentityService>();
+        // Add Identity Provider (Infrastructure)
+        services.AddScoped<IIdentityProvider, IdentityProvider>();
 
-        // Add Permission Services
-        services.AddScoped<IPermissionService, PermissionService>();
+
         services.AddScoped<IPermissionCacheManager, PermissionCacheManager>();
 
         // Add Authorization components
@@ -114,9 +113,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActivityLogService, ActivityLogService>();
 
         // Add Repository Services
-        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserRepository, UserDataRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
+
+        // Keep legacy UserRepository for backwards compatibility
+        services.AddScoped<UserRepository>();
 
         return services;
     }

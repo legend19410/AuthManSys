@@ -1,19 +1,36 @@
 using MediatR;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Models;
 
 namespace AuthManSys.Application.PermissionManagement.Commands;
 
 public class BulkGrantPermissionsCommandHandler : IRequestHandler<BulkGrantPermissionsCommand, object>
 {
-    private readonly IPermissionService _permissionService;
+    private readonly IPermissionRepository _permissionRepository;
+    private readonly IRoleRepository _roleRepository;
 
-    public BulkGrantPermissionsCommandHandler(IPermissionService permissionService)
+    public BulkGrantPermissionsCommandHandler(
+        IPermissionRepository permissionRepository,
+        IRoleRepository roleRepository)
     {
-        _permissionService = permissionService;
+        _permissionRepository = permissionRepository;
+        _roleRepository = roleRepository;
     }
 
     public async Task<object> Handle(BulkGrantPermissionsCommand request, CancellationToken cancellationToken)
     {
-        return await _permissionService.BulkGrantPermissionsAsync(request.Permissions.ToList(), request.CurrentUser);
+        // Convert to RolePermissionMapping format required by repository
+        var mappings = new List<RolePermissionMapping>();
+
+        foreach (var permission in request.Permissions)
+        {
+            mappings.Add(new RolePermissionMapping
+            {
+                RoleName = permission.RoleName,
+                PermissionName = permission.PermissionName
+            });
+        }
+
+        return await _permissionRepository.BulkAssignPermissionsToRolesAsync(mappings);
     }
 }

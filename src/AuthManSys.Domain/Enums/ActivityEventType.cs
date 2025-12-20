@@ -47,11 +47,18 @@ public enum ActivityEventType
     // Role Management Events
     RoleAssigned,
     RoleRemoved,
+    RoleRevoked,
     RoleCreated,
 
     // Permission Events
     PermissionGranted,
     PermissionRevoked,
+    PermissionCreated,
+    BulkPermissionGrant,
+    BulkPermissionRevoke,
+
+    // Password Events
+    PasswordReset,
 
     // Security Events
     SuspiciousActivity,

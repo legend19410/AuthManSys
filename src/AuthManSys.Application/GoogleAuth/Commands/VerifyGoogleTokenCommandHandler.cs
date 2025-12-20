@@ -7,16 +7,19 @@ namespace AuthManSys.Application.GoogleAuth.Commands;
 public class VerifyGoogleTokenCommandHandler : IRequestHandler<VerifyGoogleTokenCommand, VerifyGoogleTokenResponse>
 {
     private readonly IGoogleTokenService _googleTokenService;
-    private readonly IIdentityService _identityService;
+    private readonly IIdentityProvider _identityProvider;
+    private readonly IUserRepository _userRepository;
     private readonly ILogger<VerifyGoogleTokenCommandHandler> _logger;
 
     public VerifyGoogleTokenCommandHandler(
         IGoogleTokenService googleTokenService,
-        IIdentityService identityService,
+        IIdentityProvider identityProvider,
+        IUserRepository userRepository,
         ILogger<VerifyGoogleTokenCommandHandler> logger)
     {
         _googleTokenService = googleTokenService;
-        _identityService = identityService;
+        _identityProvider = identityProvider;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -39,7 +42,7 @@ public class VerifyGoogleTokenCommandHandler : IRequestHandler<VerifyGoogleToken
         _logger.LogInformation("Google token verified successfully for email: {Email}", googlePayload.Email);
 
         // Check if user exists by Google ID first
-        var userByGoogleId = await _identityService.GetUserByGoogleIdAsync(googlePayload.Subject);
+        var userByGoogleId = await _userRepository.GetByGoogleIdAsync(googlePayload.Subject);
         if (userByGoogleId != null)
         {
             _logger.LogInformation("User found by Google ID: {GoogleId}", googlePayload.Subject);
@@ -58,7 +61,7 @@ public class VerifyGoogleTokenCommandHandler : IRequestHandler<VerifyGoogleToken
         }
 
         // Check if user exists by email
-        var userByEmail = await _identityService.GetUserByEmailAsync(googlePayload.Email);
+        var userByEmail = await _identityProvider.FindByEmailAsync(googlePayload.Email);
         if (userByEmail != null)
         {
             _logger.LogInformation("User found by email: {Email}", googlePayload.Email);

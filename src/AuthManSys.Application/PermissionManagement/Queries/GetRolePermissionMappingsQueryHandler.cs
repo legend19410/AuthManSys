@@ -5,15 +5,22 @@ namespace AuthManSys.Application.PermissionManagement.Queries;
 
 public class GetRolePermissionMappingsQueryHandler : IRequestHandler<GetRolePermissionMappingsQuery, object>
 {
-    private readonly IPermissionService _permissionService;
+    private readonly IPermissionRepository _permissionRepository;
 
-    public GetRolePermissionMappingsQueryHandler(IPermissionService permissionService)
+    public GetRolePermissionMappingsQueryHandler(IPermissionRepository permissionRepository)
     {
-        _permissionService = permissionService;
+        _permissionRepository = permissionRepository;
     }
 
     public async Task<object> Handle(GetRolePermissionMappingsQuery request, CancellationToken cancellationToken)
     {
-        return await _permissionService.GetDetailedRolePermissionMappingsAsync();
+        var mappings = await _permissionRepository.GetDetailedRolePermissionMappingsAsync();
+
+        // Transform to frontend expected format: array of objects with roleName and permissions
+        return mappings.Select(mapping => new
+        {
+            roleName = mapping.Key,
+            permissions = mapping.Value.Select(permissionName => new { name = permissionName }).ToList()
+        }).ToArray();
     }
 }

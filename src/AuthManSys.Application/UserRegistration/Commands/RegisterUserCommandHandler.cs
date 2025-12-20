@@ -7,30 +7,19 @@ namespace AuthManSys.Application.UserRegistration.Commands;
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, RegisterResponse>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IUserRepository _userRepository;
+    private readonly IIdentityProvider _identityProvider;
 
-    public RegisterUserCommandHandler(IIdentityService identityExtension)
+    public RegisterUserCommandHandler(IUserRepository userRepository, IIdentityProvider identityProvider)
     {
-        _identityExtension = identityExtension;
+        _userRepository = userRepository;
+        _identityProvider = identityProvider;
     }
 
     public async Task<RegisterResponse> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
-        // Check if user already exists
-        var existingUser = await _identityExtension.FindByUserNameAsync(request.Username);
-        if (existingUser != null)
-        {
-            throw new InvalidOperationException("Username already exists");
-        }
-
-        var existingEmailUser = await _identityExtension.FindByEmailAsync(request.Email);
-        if (existingEmailUser != null)
-        {
-            throw new InvalidOperationException("Email already exists");
-        }
-
-        // Create user
-        var result = await _identityExtension.CreateUserAsync(
+        // Create user using IdentityProvider
+        var result = await _identityProvider.CreateUserAsync(
             request.Username,
             request.Email,
             request.Password,
@@ -44,23 +33,28 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
         }
 
         // Get the created user
-        var createdUser = await _identityExtension.FindByUserNameAsync(request.Username);
+        var createdUser = await _userRepository.GetUserInformationByUsernameAsync(request.Username);
         if (createdUser == null)
         {
             throw new InvalidOperationException("Failed to retrieve created user");
         }
 
-        // Assign default role (User)
-        await _identityExtension.AddToRoleAsync(createdUser, "User");
+        // Get user entity for role assignment
+        var userEntity = await _userRepository.GetByUsernameAsync(request.Username);
+        if (userEntity != null)
+        {
+            // Assign default role (User)
+            await _userRepository.AddToRoleAsync(userEntity, "User", null);
+        }
 
         return new RegisterResponse
         {
-            UserId = createdUser.Id,
-            Username = createdUser.UserName ?? request.Username,
+            UserId = createdUser.Id.ToString(),
+            Username = createdUser.Username ?? request.Username,
             Email = createdUser.Email ?? request.Email,
-            FirstName = createdUser.FirstName,
-            LastName = createdUser.LastName,
-            IsEmailConfirmed = createdUser.EmailConfirmed,
+            FirstName = createdUser.FirstName ?? "",
+            LastName = createdUser.LastName ?? "",
+            IsEmailConfirmed = false, // New users require email confirmation by default
             Message = "User registered successfully"
         };
     }

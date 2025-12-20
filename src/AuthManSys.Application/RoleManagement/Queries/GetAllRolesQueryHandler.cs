@@ -6,16 +6,16 @@ namespace AuthManSys.Application.RoleManagement.Queries;
 
 public class GetAllRolesQueryHandler : IRequestHandler<GetAllRolesQuery, IEnumerable<RoleDto>>
 {
-    private readonly IIdentityService _identityExtension;
+    private readonly IRoleRepository _roleRepository;
 
-    public GetAllRolesQueryHandler(IIdentityService identityExtension)
+    public GetAllRolesQueryHandler(IRoleRepository roleRepository)
     {
-        _identityExtension = identityExtension;
+        _roleRepository = roleRepository;
     }
 
     public async Task<IEnumerable<RoleDto>> Handle(GetAllRolesQuery request, CancellationToken cancellationToken)
     {
-        var roles = await _identityExtension.GetAllRolesWithDetailsAsync();
+        var roles = await _roleRepository.GetAllRolesWithDetailsAsync();
         return roles;
     }
 }

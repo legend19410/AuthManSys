@@ -29,18 +29,21 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
-    private readonly IIdentityService _identityService;
+    private readonly IIdentityProvider _identityProvider;
+    private readonly IUserRepository _userRepository;
     private readonly SignInManager<ApplicationUser> _signInManager;
 
     public AuthController(
         IMediator mediator,
         ILogger<AuthController> logger,
-        IIdentityService identityService,
+        IIdentityProvider identityProvider,
+        IUserRepository userRepository,
         SignInManager<ApplicationUser> signInManager)
     {
         _mediator = mediator;
         _logger = logger;
-        _identityService = identityService;
+        _identityProvider = identityProvider;
+        _userRepository = userRepository;
         _signInManager = signInManager;
     }
 
@@ -538,7 +541,7 @@ public class AuthController : ControllerBase
             return BadRequest("Required information missing from Google response");
         }
 
-        var user = await _identityService.FindByEmailAsync(email);
+        var user = await _identityProvider.FindByEmailAsync(email);
 
         if (user == null)
         {
@@ -547,7 +550,7 @@ public class AuthController : ControllerBase
             var firstName = names.Length > 0 ? names[0] : email.Split('@')[0];
             var lastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
 
-            var result = await _identityService.CreateUserAsync(
+            var result = await _identityProvider.CreateUserAsync(
                 email,
                 email,
                 Guid.NewGuid().ToString(), // Random password since it won't be used
@@ -560,7 +563,7 @@ public class AuthController : ControllerBase
                 return BadRequest("Failed to create user account");
             }
 
-            user = await _identityService.FindByEmailAsync(email);
+            user = await _identityProvider.FindByEmailAsync(email);
             if (user == null)
             {
                 return BadRequest("Failed to retrieve created user");
@@ -573,7 +576,7 @@ public class AuthController : ControllerBase
             user.GoogleLinkedAt = DateTime.UtcNow;
             user.EmailConfirmed = true; // Auto-confirm since Google verified it
 
-            await _identityService.UpdateUserAsync(user);
+            await _userRepository.UpdateAsync(user);
         }
         else
         {
@@ -584,7 +587,7 @@ public class AuthController : ControllerBase
                 user.GoogleEmail = email;
                 user.IsGoogleAccount = true;
                 user.GoogleLinkedAt = DateTime.UtcNow;
-                await _identityService.UpdateUserAsync(user);
+                await _userRepository.UpdateAsync(user);
             }
         }
 
@@ -592,8 +595,8 @@ public class AuthController : ControllerBase
         await _signInManager.SignInAsync(user, isPersistent: false);
 
         // Generate JWT token
-        var roles = await _identityService.GetUserRolesAsync(user);
-        var token = _identityService.GenerateToken(user.UserName!, user.Email!, user.Id);
+        var roles = await _identityProvider.GetUserRolesAsync(user);
+        var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
 
         _logger.LogInformation("User {Email} successfully logged in via Google", email);
 
