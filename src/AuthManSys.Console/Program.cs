@@ -7,6 +7,7 @@ using AuthManSys.Infrastructure.DependencyInjection;
 using AuthManSys.Console.Services;
 using AuthManSys.Console.DependencyInjection;
 using AuthManSys.Console.Commands;
+using AuthManSys.Console.Utilities;
 
 namespace AuthManSys.Console;
 
@@ -14,6 +15,8 @@ class Program
 {
     static async Task<int> Main(string[] args)
     {
+        // Configure the services 
+        // set appsettings.json as the base configuration file
         var host = CreateHost();
 
         var rootCommand = new RootCommand("AuthManSys Console - Custom dotnet tool for AuthManSys operations");
@@ -36,12 +39,31 @@ class Program
             await menuService.ShowMenuAsync();
         });
 
-        // If no arguments provided, show interactive menu
+        // If no arguments provided, show interactive menu (but only if input is available)
         if (args.Length == 0)
         {
-            var menuService = host.Services.GetRequiredService<IMenuService>();
-            await menuService.ShowMenuAsync();
-            return 0;
+            if (SafeConsole.IsInputRedirected)
+            {
+                // Input is redirected (like in VSCode debugger), show help instead
+                SafeConsole.WriteLine("AuthManSys Console - Custom dotnet tool for AuthManSys operations");
+                SafeConsole.WriteLine();
+                SafeConsole.WriteLine("Console input is redirected. Available commands:");
+                SafeConsole.WriteLine("  db status    - Check database status");
+                SafeConsole.WriteLine("  db migrate   - Run database migrations");
+                SafeConsole.WriteLine("  db seed      - Seed database with initial data");
+                SafeConsole.WriteLine("  db reset     - Reset database (delete all data and reseed)");
+                SafeConsole.WriteLine("  user list    - List all users");
+                SafeConsole.WriteLine("  menu         - Start interactive menu (requires console input)");
+                SafeConsole.WriteLine();
+                SafeConsole.WriteLine("Example: dotnet run -- db status");
+                return 0;
+            }
+            else
+            {
+                var menuService = host.Services.GetRequiredService<IMenuService>();
+                await menuService.ShowMenuAsync();
+                return 0;
+            }
         }
 
         return await rootCommand.InvokeAsync(args);
@@ -75,6 +97,7 @@ class Program
         var createUserCommand = new Command("create", "Create a new user");
         var deleteUserCommand = new Command("delete", "Delete a user");
 
+        // What happens when "user list" command is called       
         listUsersCommand.SetHandler(async () =>
         {
             var userCommands = host.Services.GetRequiredService<IUserCommands>();

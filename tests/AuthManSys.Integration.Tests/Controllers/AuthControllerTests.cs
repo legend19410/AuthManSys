@@ -3,7 +3,7 @@ using Moq;
 using MediatR;
 using AuthManSys.Api.Controllers;
 using AuthManSys.Api.Models;
-using AuthManSys.Application.Login.Commands;
+using AuthManSys.Application.Modules.Auth.Login.Commands;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;

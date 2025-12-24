@@ -22,8 +22,8 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         // Get database provider setting
-        var databaseProvider = configuration["DatabaseProvider"] ?? "SQLite";
-        
+        var databaseProvider = configuration["DatabaseProvider"] ?? "MySQL";
+
         // Add DbContext based on provider
         services.AddDbContext<AuthManSysDbContext>(options =>
         {
@@ -36,18 +36,20 @@ public static class ServiceCollectionExtensions
             }
             else if (databaseProvider.ToUpper() == "MYSQL")
             {
+                var connectionString = configuration.GetConnectionString("MySqlConnection");
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    throw new InvalidOperationException("MySqlConnection connection string is not configured or is empty. Please check your appsettings.json file.");
+                }
                 options.UseMySql(
-                    configuration.GetConnectionString("MySqlConnection"),
-                    ServerVersion.AutoDetect(configuration.GetConnectionString("MySqlConnection")),
+                    connectionString,
+                    ServerVersion.AutoDetect(connectionString),
                     b => b.MigrationsAssembly(typeof(AuthManSysDbContext).Assembly.FullName)
                 );
             }
             else
             {
-                options.UseSqlite(
-                    configuration.GetConnectionString("DefaultConnection"),
-                    b => b.MigrationsAssembly(typeof(AuthManSysDbContext).Assembly.FullName)
-                );
+                throw new InvalidOperationException($"Unsupported database provider: {databaseProvider}. Supported providers are: MySQL, SqlServer");
             }
         });
 

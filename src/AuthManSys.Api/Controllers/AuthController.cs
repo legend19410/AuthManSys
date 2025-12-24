@@ -1,13 +1,13 @@
 
-using AuthManSys.Application.Login.Commands;
-using AuthManSys.Application.RefreshToken.Commands;
-using AuthManSys.Application.UserEmail.Commands;
-using AuthManSys.Application.RoleManagement.Commands;
-using AuthManSys.Application.RoleManagement.Queries;
-using AuthManSys.Application.TwoFactor.Commands;
-using AuthManSys.Application.GoogleAuth.Commands;
-using AuthManSys.Application.PermissionManagement.Commands;
-using AuthManSys.Application.PermissionManagement.Queries;
+using AuthManSys.Application.Modules.Auth.Login.Commands;
+using AuthManSys.Application.Modules.Auth.RefreshToken.Commands;
+using AuthManSys.Application.Modules.Users.UserEmail.Commands;
+using AuthManSys.Application.Modules.Auth.RoleManagement.Commands;
+using AuthManSys.Application.Modules.Auth.RoleManagement.Queries;
+using AuthManSys.Application.Modules.Auth.TwoFactor.Commands;
+using AuthManSys.Application.Modules.Auth.GoogleAuth.Commands;
+using AuthManSys.Application.Modules.Auth.PermissionManagement.Commands;
+using AuthManSys.Application.Modules.Auth.PermissionManagement.Queries;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Interfaces;

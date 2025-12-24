@@ -4,19 +4,14 @@ A comprehensive .NET 9 Web API project with JWT authentication, user management,
 
 ## Database Setup
 
-This project supports both SQLite and SQL Server databases. You can switch between them using configuration.
+This project supports both MySQL and SQL Server databases. You can switch between them using configuration.
 
-### Option 1: SQLite (Default)
-- **No installation required** - SQLite is embedded
-- Database file is created automatically in the API project directory
-- Set `"DatabaseProvider": "SQLite"` in appsettings.json
-
-### Option 2: MySQL with Docker
+### Option 1: MySQL with Docker (Default)
 - Requires Docker to be installed on your system
 - Run MySQL in a Docker container
 - Set `"DatabaseProvider": "MySQL"` in appsettings.json
 
-## Getting Started with MySQL
+## Getting Started
 
 1. **Start MySQL Container:**
    ```bash
@@ -24,22 +19,14 @@ This project supports both SQLite and SQL Server databases. You can switch betwe
    docker compose up --build -d
    ```
 
-2. **Change Database Provider:**
-   Update `appsettings.json` or `appsettings.Development.json`:
-   ```json
-   {
-     "DatabaseProvider": "MySQL"
-   }
-   ```
-
-3. **Create MySQL Migration:**
+2. **Create MySQL Migration:**
    ```bash
    # From the API project directory
    cd AuthManSys.Api
    dotnet ef migrations add InitialCreate_MySQL --project ../AuthManSys.Infrastructure
    ```
 
-4. **Update Database:**
+3. **Update Database:**
    ```bash
    dotnet ef database update --project ../AuthManSys.Infrastructure
    ```
@@ -81,14 +68,14 @@ This project supports both SQLite and SQL Server databases. You can switch betwe
 ## Configuration
 
 ### Connection Strings
-- **SQLite**: `"Data Source=AuthManSysDb.sqlite"`
 - **MySQL**: `"Server=localhost;Port=3307;Database=AuthManSysDb;User=authuser;Password=P@ssw0rd123!;"`
+- **SQL Server**: `"Server=localhost,1433;Database=YourDatabase;User Id=sa;Password=YOUR_PASSWORD;TrustServerCertificate=true;"`
 
 ### Database Provider Setting
 Set in appsettings.json:
 ```json
 {
-  "DatabaseProvider": "SQLite"  // or "MySQL"
+  "DatabaseProvider": "MySQL"  // or "SqlServer"
 }
 ```
 
@@ -277,6 +264,6 @@ docker compose down
 ## Development
 
 - The project automatically switches database providers based on the `DatabaseProvider` setting
-- Both SQLite and MySQL use the same Entity Framework models and migrations
-- Database-specific syntax is handled automatically (e.g., `GETUTCDATE()` vs `datetime('now')`)
+- Both MySQL and SQL Server use the same Entity Framework models and migrations
+- Database-specific syntax is handled automatically by Entity Framework Core
 - **UserIds**: The `UserId` column in `AspNetUsers` table is configured for auto-increment starting from 1

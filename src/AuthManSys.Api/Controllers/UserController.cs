@@ -1,15 +1,15 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using AuthManSys.Application.UserInformation.Queries;
-using AuthManSys.Application.UserRegistration.Commands;
+using AuthManSys.Application.Modules.Users.UserInformation.Queries;
+using AuthManSys.Application.Modules.Auth.UserRegistration.Commands;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Api.Models;
-using AuthManSys.Application.UpdateUser.Commands;
-using AuthManSys.Application.SoftDeleteUser.Commands;
-using AuthManSys.Application.PasswordManagement.Commands;
+using AuthManSys.Application.Modules.Users.UpdateUser.Commands;
+using AuthManSys.Application.Modules.Users.SoftDeleteUser.Commands;
+using AuthManSys.Application.Modules.Auth.PasswordManagement.Commands;
 using AuthManSys.Domain.Entities;
 using System.Security.Claims;
 

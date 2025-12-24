@@ -10,33 +10,47 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AuthManSys
 {
     public AuthManSysDbContext CreateDbContext(string[] args)
     {
-        // Build configuration from the API project's appsettings
-        var basePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "AuthManSys.Api");
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json")
-            .AddJsonFile("appsettings.Development.json", optional: true)
-            .Build();
+        // Try to find configuration from current directory first (for Console app), then API project
+        var configuration = new ConfigurationBuilder();
+
+        // Check if we're running from Console app directory
+        if (File.Exists(Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json")))
+        {
+            configuration
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true)
+                .AddJsonFile("appsettings.Development.json", optional: true);
+        }
+        else
+        {
+            // Fallback to API project's appsettings
+            var basePath = Path.Combine(Directory.GetCurrentDirectory(), "..", "AuthManSys.Api");
+            configuration
+                .SetBasePath(basePath)
+                .AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.Development.json", optional: true);
+        }
+
+        var config = configuration.Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<AuthManSysDbContext>();
         
         // Get database provider setting
-        var databaseProvider = configuration["DatabaseProvider"] ?? "SQLite";
-        
+        var databaseProvider = config["DatabaseProvider"] ?? "MySQL";
+
         if (databaseProvider.ToUpper() == "SQLSERVER")
         {
-            var sqlServerConnectionString = configuration.GetConnectionString("SqlServerConnection");
+            var sqlServerConnectionString = config.GetConnectionString("SqlServerConnection");
             optionsBuilder.UseSqlServer(sqlServerConnectionString);
         }
         else if (databaseProvider.ToUpper() == "MYSQL")
         {
-            var mySqlConnectionString = configuration.GetConnectionString("MySqlConnection");
+            var mySqlConnectionString = config.GetConnectionString("MySqlConnection");
             optionsBuilder.UseMySql(mySqlConnectionString, ServerVersion.AutoDetect(mySqlConnectionString));
         }
         else
         {
-            var sqliteConnectionString = configuration.GetConnectionString("DefaultConnection");
-            optionsBuilder.UseSqlite(sqliteConnectionString);
+            throw new InvalidOperationException($"Unsupported database provider: {databaseProvider}. Supported providers are: MySQL, SqlServer");
         }
 
         return new AuthManSysDbContext(optionsBuilder.Options);
