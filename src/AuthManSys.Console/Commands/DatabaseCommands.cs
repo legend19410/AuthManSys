@@ -30,7 +30,7 @@ public class DatabaseCommands : IDatabaseCommands
 
         try
         {
-            await IdentitySeeder.SeedAsync(_context, _userManager, _roleManager);
+            await MasterSeeder.SeedAllAsync(_context, _userManager, _roleManager);
             System.Console.WriteLine("✅ Database seeded successfully!");
         }
         catch (Exception ex)
@@ -101,7 +101,7 @@ public class DatabaseCommands : IDatabaseCommands
             await _context.Database.EnsureCreatedAsync();
             System.Console.WriteLine("✅ Database recreated successfully!");
 
-            await IdentitySeeder.SeedAsync(_context, _userManager, _roleManager);
+            await MasterSeeder.SeedAllAsync(_context, _userManager, _roleManager);
             System.Console.WriteLine("✅ Database seeded with initial data!");
         }
         catch (Exception ex)

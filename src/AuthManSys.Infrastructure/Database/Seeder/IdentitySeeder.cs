@@ -80,7 +80,7 @@ public static class IdentitySeeder
         await context.SaveChangesAsync();
 
         // Seed permissions and role-permission mappings
-        await PermissionSeeder.SeedAsync(context, roleManager);
+        await PermissionSeeder.SeedAsync(context);
     }
 
 }

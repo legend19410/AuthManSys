@@ -43,10 +43,9 @@ public class AuthManSysDbContext : IdentityDbContext<ApplicationUser, IdentityRo
         // Configure ApplicationUser entity
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
-            // Configure UserId as auto-increment identity column
+            // Configure UserId - manually managed, not auto-increment
             entity.Property(e => e.UserId)
-                .ValueGeneratedOnAdd()
-                .UseIdentityColumn();
+                .ValueGeneratedNever();
 
             // Ensure UserId is unique
             entity.HasIndex(e => e.UserId)
