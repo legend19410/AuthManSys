@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace AuthManSys.Infrastructure.Migrations
+namespace AuthManSys.Infrastructure.Database.Migrations
 {
     [DbContext(typeof(AuthManSysDbContext))]
     partial class AuthManSysDbContextModelSnapshot : ModelSnapshot

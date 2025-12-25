@@ -4,10 +4,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace AuthManSys.Infrastructure.Migrations
+namespace AuthManSys.Infrastructure.Database.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMySqlCreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -20,6 +20,10 @@ namespace AuthManSys.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "varchar(255)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CreatedBy = table.Column<int>(type: "int", nullable: true),
+                    Description = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
@@ -44,8 +48,7 @@ namespace AuthManSys.Infrastructure.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     LastName = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    UserId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    UserId = table.Column<int>(type: "int", nullable: false),
                     EmailConfirmationToken = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     PasswordResetToken = table.Column<string>(type: "longtext", nullable: false)
@@ -59,11 +62,22 @@ namespace AuthManSys.Infrastructure.Migrations
                     DeletedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     DeletedBy = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    Status = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    LastLoginAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     TwoFactorCode = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     TwoFactorCodeExpiration = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     IsTwoFactorEnabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     TwoFactorCodeGeneratedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    GoogleId = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    GoogleEmail = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    GooglePictureUrl = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    IsGoogleAccount = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    GoogleLinkedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     UserName = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     NormalizedUserName = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true)
@@ -133,6 +147,36 @@ namespace AuthManSys.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_RefreshTokens", x => x.Id);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "UserActivityLogs",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    UserId = table.Column<int>(type: "int", maxLength: 255, nullable: true),
+                    EventType = table.Column<int>(type: "int", maxLength: 50, nullable: false),
+                    EventTag = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Description = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Timestamp = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    IPAddress = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Device = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Platform = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Location = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Metadata = table.Column<string>(type: "TEXT", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserActivityLogs", x => x.Id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -218,7 +262,9 @@ namespace AuthManSys.Infrastructure.Migrations
                     UserId = table.Column<string>(type: "varchar(255)", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     RoleId = table.Column<string>(type: "varchar(255)", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4")
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    AssignedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    AssignedBy = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -300,6 +346,11 @@ namespace AuthManSys.Infrastructure.Migrations
                 column: "RoleId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetRoles_CreatedAt",
+                table: "AspNetRoles",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
                 name: "RoleNameIndex",
                 table: "AspNetRoles",
                 column: "NormalizedName",
@@ -316,9 +367,19 @@ namespace AuthManSys.Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserRoles_AssignedAt",
+                table: "AspNetUserRoles",
+                column: "AssignedAt");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_AspNetUserRoles_RoleId",
                 table: "AspNetUserRoles",
                 column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AspNetUserRoles_UserId_AssignedAt",
+                table: "AspNetUserRoles",
+                columns: new[] { "UserId", "AssignedAt" });
 
             migrationBuilder.CreateIndex(
                 name: "EmailIndex",
@@ -364,6 +425,26 @@ namespace AuthManSys.Infrastructure.Migrations
                 table: "RolePermissions",
                 columns: new[] { "RoleId", "PermissionId" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserActivityLogs_EventType",
+                table: "UserActivityLogs",
+                column: "EventType");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserActivityLogs_Timestamp",
+                table: "UserActivityLogs",
+                column: "Timestamp");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserActivityLogs_UserId",
+                table: "UserActivityLogs",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserActivityLogs_UserId_Timestamp",
+                table: "UserActivityLogs",
+                columns: new[] { "UserId", "Timestamp" });
         }
 
         /// <inheritdoc />
@@ -389,6 +470,9 @@ namespace AuthManSys.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "RolePermissions");
+
+            migrationBuilder.DropTable(
+                name: "UserActivityLogs");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

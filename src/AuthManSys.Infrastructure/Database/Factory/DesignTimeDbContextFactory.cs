@@ -41,12 +41,16 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AuthManSys
         if (databaseProvider.ToUpper() == "SQLSERVER")
         {
             var sqlServerConnectionString = config.GetConnectionString("SqlServerConnection");
-            optionsBuilder.UseSqlServer(sqlServerConnectionString);
+            optionsBuilder.UseSqlServer(sqlServerConnectionString,
+                b => b.MigrationsAssembly(typeof(AuthManSysDbContext).Assembly.FullName)
+                      .MigrationsHistoryTable("__EFMigrationsHistory"));
         }
         else if (databaseProvider.ToUpper() == "MYSQL")
         {
             var mySqlConnectionString = config.GetConnectionString("MySqlConnection");
-            optionsBuilder.UseMySql(mySqlConnectionString, ServerVersion.AutoDetect(mySqlConnectionString));
+            optionsBuilder.UseMySql(mySqlConnectionString, ServerVersion.AutoDetect(mySqlConnectionString),
+                b => b.MigrationsAssembly(typeof(AuthManSysDbContext).Assembly.FullName)
+                      .MigrationsHistoryTable("__EFMigrationsHistory"));
         }
         else
         {
