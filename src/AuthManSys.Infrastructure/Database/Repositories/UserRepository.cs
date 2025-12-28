@@ -1,15 +1,10 @@
 using AuthManSys.Application.Common.Interfaces;
-using AuthManSys.Application.Common.Helpers;
+using AuthManSys.Application.Common.Models;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Infrastructure.Database.DbContext;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using AuthManSys.Application.Common.Models;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace AuthManSys.Infrastructure.Database.Repositories;
 
@@ -17,22 +12,13 @@ public class UserRepository : IUserRepository
 {
     private readonly AuthManSysDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
-    private readonly JwtSettings _jwtSettings;
 
     public UserRepository(
         AuthManSysDbContext context,
-        UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
-        RoleManager<IdentityRole> roleManager,
-        IOptions<JwtSettings> jwtSettings)
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
         _userManager = userManager;
-        _signInManager = signInManager;
-        _roleManager = roleManager;
-        _jwtSettings = jwtSettings.Value;
     }
 
     public async Task<ApplicationUser?> GetByIdAsync(string userId)
@@ -57,6 +43,12 @@ public class UserRepository : IUserRepository
     {
         var user = await _userManager.FindByEmailAsync(email);
         return user?.IsDeleted == true ? null : user;
+    }
+
+    public async Task<ApplicationUser?> GetByGoogleIdAsync(string googleId)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.GoogleId == googleId && !u.IsDeleted);
     }
 
     public async Task<IEnumerable<ApplicationUser>> GetAllAsync(bool includeDeleted = false)
@@ -122,212 +114,6 @@ public class UserRepository : IUserRepository
         return await _userManager.UpdateAsync(user);
     }
 
-    public async Task<bool> CheckPasswordAsync(ApplicationUser user, string password)
-    {
-        return await _userManager.CheckPasswordAsync(user, password);
-    }
-
-    public async Task<IdentityResult> ChangePasswordAsync(ApplicationUser user, string currentPassword, string newPassword)
-    {
-        var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
-
-        if (result.Succeeded)
-        {
-            user.LastPasswordChangedDate = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-        }
-
-        return result;
-    }
-
-    public async Task<bool> IsEmailConfirmedAsync(ApplicationUser user)
-    {
-        return await _userManager.IsEmailConfirmedAsync(user);
-    }
-
-    public async Task<IdentityResult> ConfirmEmailAsync(ApplicationUser user, string token)
-    {
-        string decodedToken = Base64UrlEncoder.Decode(token);
-        return await _userManager.ConfirmEmailAsync(user, decodedToken);
-    }
-
-    public async Task<string> GenerateEmailConfirmationTokenAsync(ApplicationUser user)
-    {
-        string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        return Base64UrlEncoder.Encode(token);
-    }
-
-    public async Task<string> GeneratePasswordResetTokenAsync(ApplicationUser user)
-    {
-        string token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        return Base64UrlEncoder.Encode(token);
-    }
-
-    public async Task<IdentityResult> ResetPasswordAsync(ApplicationUser user, string token, string newPassword)
-    {
-        string decodedToken = Base64UrlEncoder.Decode(token);
-        var result = await _userManager.ResetPasswordAsync(user, decodedToken, newPassword);
-
-        if (result.Succeeded)
-        {
-            user.LastPasswordChangedDate = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-
-            var userIsLockedOut = await _userManager.IsLockedOutAsync(user);
-            if (userIsLockedOut)
-            {
-                await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
-            }
-        }
-
-        return result;
-    }
-
-    public async Task<IList<string>> GetRolesAsync(ApplicationUser user)
-    {
-        return await _userManager.GetRolesAsync(user);
-    }
-
-    public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role)
-    {
-        return await _userManager.AddToRoleAsync(user, role);
-    }
-
-    public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role, int? assignedBy)
-    {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            var result = await _userManager.AddToRoleAsync(user, role);
-            if (!result.Succeeded)
-            {
-                await transaction.RollbackAsync();
-                return result;
-            }
-
-            var roleEntity = await _roleManager.FindByNameAsync(role);
-            if (roleEntity != null)
-            {
-                var userRole = await _context.Set<ApplicationUserRole>()
-                    .FirstOrDefaultAsync(ur => ur.UserId == user.Id && ur.RoleId == roleEntity.Id);
-
-                if (userRole != null)
-                {
-                    userRole.AssignedAt = JamaicaTimeHelper.Now;
-                    userRole.AssignedBy = assignedBy;
-                    await _context.SaveChangesAsync();
-                }
-            }
-
-            await transaction.CommitAsync();
-            return IdentityResult.Success;
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-    }
-
-    public async Task<IdentityResult> RemoveFromRoleAsync(ApplicationUser user, string role)
-    {
-        return await _userManager.RemoveFromRoleAsync(user, role);
-    }
-
-    public async Task<bool> IsInRoleAsync(ApplicationUser user, string role)
-    {
-        return await _userManager.IsInRoleAsync(user, role);
-    }
-
-    public async Task<IdentityResult> EnableTwoFactorAsync(ApplicationUser user)
-    {
-        user.IsTwoFactorEnabled = true;
-        return await _userManager.UpdateAsync(user);
-    }
-
-    public async Task<IdentityResult> DisableTwoFactorAsync(ApplicationUser user)
-    {
-        user.IsTwoFactorEnabled = false;
-        user.TwoFactorCode = null;
-        user.TwoFactorCodeExpiration = null;
-        user.TwoFactorCodeGeneratedAt = null;
-        return await _userManager.UpdateAsync(user);
-    }
-
-    public async Task<IdentityResult> UpdateTwoFactorCodeAsync(ApplicationUser user, string code, DateTime expiration)
-    {
-        user.TwoFactorCode = code;
-        user.TwoFactorCodeExpiration = expiration;
-        user.TwoFactorCodeGeneratedAt = DateTime.UtcNow;
-        return await _userManager.UpdateAsync(user);
-    }
-
-    public async Task<string> GenerateUserTokenAsync(ApplicationUser user, string tokenProvider, string purpose)
-    {
-        return await _userManager.GenerateUserTokenAsync(user, tokenProvider, purpose);
-    }
-
-    public async Task<bool> VerifyUserTokenAsync(ApplicationUser user, string tokenProvider, string purpose, string token)
-    {
-        return await _userManager.VerifyUserTokenAsync(user, tokenProvider, purpose, token);
-    }
-
-    public async Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId)
-    {
-        var refreshToken = new RefreshToken
-        {
-            Token = Guid.NewGuid().ToString(),
-            JwtId = jwtId,
-            UserId = user.UserId,
-            CreationDate = DateTime.UtcNow,
-            ExpirationDate = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenTimeSpanInDays),
-            Used = false,
-            Invalidated = false
-        };
-
-        await _context.RefreshTokens.AddAsync(refreshToken);
-        await _context.SaveChangesAsync();
-
-        return refreshToken.Token;
-    }
-
-    public async Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId)
-    {
-        var storedRefreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(x => x.Token == refreshToken);
-
-        if (storedRefreshToken == null)
-            return false;
-
-        if (DateTime.UtcNow > storedRefreshToken.ExpirationDate)
-            return false;
-
-        if (storedRefreshToken.Invalidated)
-            return false;
-
-        if (storedRefreshToken.Used)
-            return false;
-
-        if (storedRefreshToken.JwtId != jwtId)
-            return false;
-
-        return true;
-    }
-
-    public async Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken)
-    {
-        var storedRefreshToken = await _context.RefreshTokens
-            .FirstOrDefaultAsync(x => x.Token == refreshToken);
-
-        if (storedRefreshToken == null)
-            return null;
-
-        var user = await _context.Users
-            .FirstOrDefaultAsync(x => x.UserId == storedRefreshToken.UserId);
-
-        return user;
-    }
-
     public async Task<IEnumerable<ApplicationUser>> SearchUsersAsync(string searchTerm, int pageNumber = 1, int pageSize = 10)
     {
         var query = _context.Users
@@ -352,12 +138,6 @@ public class UserRepository : IUserRepository
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
-    }
-
-    public async Task<IEnumerable<ApplicationUser>> GetUsersInRoleAsync(string roleName)
-    {
-        var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
-        return usersInRole.Where(u => !u.IsDeleted);
     }
 
     public async Task<UserInformationResponse?> GetUserInformationAsync(int userId, CancellationToken cancellationToken = default)
@@ -451,6 +231,14 @@ public class UserRepository : IUserRepository
         };
     }
 
+    public async Task<int> GetMaxUserIdAsync()
+    {
+        var maxUserId = await _context.Users
+            .Where(u => !u.IsDeleted)
+            .MaxAsync(u => (int?)u.UserId) ?? 0;
+        return maxUserId;
+    }
+
     private async Task<UserInformationResponse> BuildUserInformationResponseAsync(ApplicationUser user, CancellationToken cancellationToken = default)
     {
         // Use LastPasswordChangedDate as a proxy for creation date, or a reasonable default
@@ -495,18 +283,151 @@ public class UserRepository : IUserRepository
         );
     }
 
-    // Google OAuth specific methods
-    public async Task<ApplicationUser?> GetByGoogleIdAsync(string googleId)
+    // Role management methods - kept minimal
+    public async Task<IList<string>> GetRolesAsync(ApplicationUser user)
     {
-        return await _context.Users
-            .FirstOrDefaultAsync(u => u.GoogleId == googleId && !u.IsDeleted);
+        return await _userManager.GetRolesAsync(user);
     }
 
-    public async Task<int> GetMaxUserIdAsync()
+    public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role)
     {
-        var maxUserId = await _context.Users
-            .Where(u => !u.IsDeleted)
-            .MaxAsync(u => (int?)u.UserId) ?? 0;
-        return maxUserId;
+        return await _userManager.AddToRoleAsync(user, role);
+    }
+
+    public async Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role, int? assignedBy)
+    {
+        // Simplified version - just add to role without tracking assignment details
+        // TODO: Implement assignment tracking when we have proper DI setup
+        return await _userManager.AddToRoleAsync(user, role);
+    }
+
+    public async Task<IdentityResult> RemoveFromRoleAsync(ApplicationUser user, string role)
+    {
+        return await _userManager.RemoveFromRoleAsync(user, role);
+    }
+
+    public async Task<bool> IsInRoleAsync(ApplicationUser user, string role)
+    {
+        return await _userManager.IsInRoleAsync(user, role);
+    }
+
+    public async Task<IEnumerable<ApplicationUser>> GetUsersInRoleAsync(string roleName)
+    {
+        var usersInRole = await _userManager.GetUsersInRoleAsync(roleName);
+        return usersInRole.Where(u => !u.IsDeleted);
+    }
+
+    // Password management methods
+    public async Task<bool> CheckPasswordAsync(ApplicationUser user, string password)
+    {
+        return await _userManager.CheckPasswordAsync(user, password);
+    }
+
+    public async Task<IdentityResult> ChangePasswordAsync(ApplicationUser user, string currentPassword, string newPassword)
+    {
+        var result = await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+
+        if (result.Succeeded)
+        {
+            user.LastPasswordChangedDate = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+        }
+
+        return result;
+    }
+
+    // Email confirmation methods
+    public async Task<bool> IsEmailConfirmedAsync(ApplicationUser user)
+    {
+        return await _userManager.IsEmailConfirmedAsync(user);
+    }
+
+    public async Task<IdentityResult> ConfirmEmailAsync(ApplicationUser user, string token)
+    {
+        string decodedToken = Base64UrlEncoder.Decode(token);
+        return await _userManager.ConfirmEmailAsync(user, decodedToken);
+    }
+
+    public async Task<string> GenerateEmailConfirmationTokenAsync(ApplicationUser user)
+    {
+        string token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        return Base64UrlEncoder.Encode(token);
+    }
+
+    public async Task<string> GeneratePasswordResetTokenAsync(ApplicationUser user)
+    {
+        string token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        return Base64UrlEncoder.Encode(token);
+    }
+
+    public async Task<IdentityResult> ResetPasswordAsync(ApplicationUser user, string token, string newPassword)
+    {
+        string decodedToken = Base64UrlEncoder.Decode(token);
+        var result = await _userManager.ResetPasswordAsync(user, decodedToken, newPassword);
+
+        if (result.Succeeded)
+        {
+            user.LastPasswordChangedDate = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
+
+            var userIsLockedOut = await _userManager.IsLockedOutAsync(user);
+            if (userIsLockedOut)
+            {
+                await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow);
+            }
+        }
+
+        return result;
+    }
+
+    // Two factor authentication methods
+    public async Task<IdentityResult> EnableTwoFactorAsync(ApplicationUser user)
+    {
+        user.IsTwoFactorEnabled = true;
+        return await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<IdentityResult> DisableTwoFactorAsync(ApplicationUser user)
+    {
+        user.IsTwoFactorEnabled = false;
+        user.TwoFactorCode = null;
+        user.TwoFactorCodeExpiration = null;
+        user.TwoFactorCodeGeneratedAt = null;
+        return await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<IdentityResult> UpdateTwoFactorCodeAsync(ApplicationUser user, string code, DateTime expiration)
+    {
+        user.TwoFactorCode = code;
+        user.TwoFactorCodeExpiration = expiration;
+        user.TwoFactorCodeGeneratedAt = DateTime.UtcNow;
+        return await _userManager.UpdateAsync(user);
+    }
+
+    // Token generation methods
+    public async Task<string> GenerateUserTokenAsync(ApplicationUser user, string tokenProvider, string purpose)
+    {
+        return await _userManager.GenerateUserTokenAsync(user, tokenProvider, purpose);
+    }
+
+    public async Task<bool> VerifyUserTokenAsync(ApplicationUser user, string tokenProvider, string purpose, string token)
+    {
+        return await _userManager.VerifyUserTokenAsync(user, tokenProvider, purpose, token);
+    }
+
+    // Refresh token methods - simplified, but keeping for backwards compatibility
+    public Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId)
+    {
+        throw new NotImplementedException("Use IIdentityProvider.GenerateRefreshTokenAsync instead");
+    }
+
+    public Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId)
+    {
+        throw new NotImplementedException("Use IIdentityProvider.ValidateRefreshTokenAsync instead");
+    }
+
+    public Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken)
+    {
+        throw new NotImplementedException("Use IIdentityProvider.GetUserByRefreshTokenAsync instead");
     }
 }

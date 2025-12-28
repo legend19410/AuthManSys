@@ -328,6 +328,16 @@ appsettings.*.json
 # But allow the example file
 !appsettings.Example.json
 
+# Google Cloud service account keys
+google-service-account-key.json
+*-service-account-key.json
+*.json
+# But allow specific project files
+!appsettings*.json
+!package.json
+!tsconfig.json
+!project.json
+
 # Database files
 *.sqlite
 *.sqlite3
@@ -354,3 +364,7 @@ Thumbs.db
 
 # Developer commands used during testing
 unix_commands.txt
+
+# Storage directories for sensitive files (keys, configs, etc.)
+**/Storage/
+Storage/

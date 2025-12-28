@@ -12,6 +12,9 @@ using AuthManSys.Infrastructure.Services;
 using AuthManSys.Infrastructure.Authorization;
 using AuthManSys.Infrastructure.Database.Repositories;
 using AuthManSys.Infrastructure.Identity;
+using AuthManSys.Infrastructure.GoogleApi.Configuration;
+using AuthManSys.Infrastructure.GoogleApi.Authentication;
+using AuthManSys.Infrastructure.GoogleApi.Services;
 
 namespace AuthManSys.Infrastructure.DependencyInjection;
 
@@ -115,12 +118,28 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IActivityLogService, ActivityLogService>();
 
         // Add Repository Services
-        services.AddScoped<IUserRepository, UserDataRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
 
-        // Keep legacy UserRepository for backwards compatibility
-        services.AddScoped<UserRepository>();
+        // Add Google API services
+        services.AddGoogleApiServices(configuration);
+
+        return services;
+    }
+
+    public static IServiceCollection AddGoogleApiServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Configure Google API settings
+        services.Configure<GoogleApiSettings>(options =>
+        {
+            configuration.GetSection(GoogleApiSettings.SectionName).Bind(options);
+        });
+
+        // Add Google API services
+        services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+        services.AddScoped<IGoogleDriveService, GoogleDriveService>();
+        services.AddScoped<IGoogleDocsService, GoogleDocsService>();
 
         return services;
     }

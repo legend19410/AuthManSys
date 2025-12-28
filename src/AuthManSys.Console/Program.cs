@@ -26,11 +26,13 @@ class Program
         var userCommand = CreateUserCommand(host);
         var authCommand = CreateAuthCommand(host);
         var dbCommand = CreateDatabaseCommand(host);
+        var googleCommand = CreateGoogleDocsCommand(host);
 
         rootCommand.AddCommand(menuCommand);
         rootCommand.AddCommand(userCommand);
         rootCommand.AddCommand(authCommand);
         rootCommand.AddCommand(dbCommand);
+        rootCommand.AddCommand(googleCommand);
 
         // Set handlers
         menuCommand.SetHandler(async () =>
@@ -53,6 +55,9 @@ class Program
                 SafeConsole.WriteLine("  db seed      - Seed database with initial data");
                 SafeConsole.WriteLine("  db reset     - Reset database (delete all data and reseed)");
                 SafeConsole.WriteLine("  user list    - List all users");
+                SafeConsole.WriteLine("  google create  - Create a new Google Document");
+                SafeConsole.WriteLine("  google write   - Write content to a Google Document");
+                SafeConsole.WriteLine("  google list    - List Google Documents");
                 SafeConsole.WriteLine("  menu         - Start interactive menu (requires console input)");
                 SafeConsole.WriteLine();
                 SafeConsole.WriteLine("Example: dotnet run -- db status");
@@ -73,8 +78,8 @@ class Program
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile("src/AuthManSys.Console/appsettings.json", optional: true)
+            .AddJsonFile("src/AuthManSys.Console/appsettings.Development.json", optional: true)
             .AddEnvironmentVariables()
             .Build();
 
@@ -164,5 +169,91 @@ class Program
         dbCommand.AddCommand(resetCommand);
 
         return dbCommand;
+    }
+
+    static Command CreateGoogleDocsCommand(IHost host)
+    {
+        var googleCommand = new Command("google", "Google Docs operations");
+
+        var createCommand = new Command("create", "Create a new Google Document");
+        var writeCommand = new Command("write", "Write content to a Google Document");
+        var createWithContentCommand = new Command("create-with-content", "Create a new Google Document with initial content");
+        var listCommand = new Command("list", "List Google Documents");
+        var infoCommand = new Command("info", "Get information about a Google Document");
+        var shareCommand = new Command("share", "Share a Google Document");
+        var exportCommand = new Command("export", "Export a Google Document");
+
+        // Add arguments for commands
+        var titleArgument = new Argument<string>("title", "The title of the document");
+        var documentIdArgument = new Argument<string>("document-id", "The ID of the document");
+        var contentArgument = new Argument<string>("content", "The content to write");
+        var emailArgument = new Argument<string>("email", "Email address to share with");
+        var roleOption = new Option<string>("--role", () => "reader", "Role for sharing (reader, writer, editor)");
+        var formatOption = new Option<string>("--format", () => "text", "Export format (text, pdf)");
+
+        createCommand.AddArgument(titleArgument);
+        writeCommand.AddArgument(documentIdArgument);
+        writeCommand.AddArgument(contentArgument);
+        createWithContentCommand.AddArgument(titleArgument);
+        createWithContentCommand.AddArgument(contentArgument);
+        infoCommand.AddArgument(documentIdArgument);
+        shareCommand.AddArgument(documentIdArgument);
+        shareCommand.AddArgument(emailArgument);
+        shareCommand.AddOption(roleOption);
+        exportCommand.AddArgument(documentIdArgument);
+        exportCommand.AddOption(formatOption);
+
+        // Add handlers for google commands
+        createCommand.SetHandler(async (title) =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.CreateDocumentAsync(title);
+        }, titleArgument);
+
+        writeCommand.SetHandler(async (documentId, content) =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.WriteToDocumentAsync(documentId, content);
+        }, documentIdArgument, contentArgument);
+
+        createWithContentCommand.SetHandler(async (title, content) =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.CreateAndWriteAsync(title, content);
+        }, titleArgument, contentArgument);
+
+        listCommand.SetHandler(async () =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.ListDocumentsAsync();
+        });
+
+        infoCommand.SetHandler(async (documentId) =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.GetDocumentInfoAsync(documentId);
+        }, documentIdArgument);
+
+        shareCommand.SetHandler(async (documentId, email, role) =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.ShareDocumentAsync(documentId, email, role);
+        }, documentIdArgument, emailArgument, roleOption);
+
+        exportCommand.SetHandler(async (documentId, format) =>
+        {
+            var googleCommands = host.Services.GetRequiredService<IGoogleDocsCommands>();
+            await googleCommands.ExportDocumentAsync(documentId, format);
+        }, documentIdArgument, formatOption);
+
+        googleCommand.AddCommand(createCommand);
+        googleCommand.AddCommand(writeCommand);
+        googleCommand.AddCommand(createWithContentCommand);
+        googleCommand.AddCommand(listCommand);
+        googleCommand.AddCommand(infoCommand);
+        googleCommand.AddCommand(shareCommand);
+        googleCommand.AddCommand(exportCommand);
+
+        return googleCommand;
     }
 }
