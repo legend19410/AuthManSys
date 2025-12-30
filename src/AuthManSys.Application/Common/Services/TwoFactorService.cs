@@ -2,7 +2,7 @@ using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Helpers;
 using System.Security.Cryptography;
 
-namespace AuthManSys.Infrastructure.Services;
+namespace AuthManSys.Application.Common.Services;
 
 public class TwoFactorService : ITwoFactorService
 {

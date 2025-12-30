@@ -11,11 +11,16 @@ public interface IUserRepository
     Task<ApplicationUser?> GetByUserIdAsync(int userId);
     Task<ApplicationUser?> GetByUsernameAsync(string username);
     Task<ApplicationUser?> GetByEmailAsync(string email);
+    Task<ApplicationUser?> FindByUserNameAsync(string userName);
+    Task<ApplicationUser?> FindByEmailAsync(string email);
+    Task<ApplicationUser?> FindByIdAsync(string userId);
     Task<IEnumerable<ApplicationUser>> GetAllAsync(bool includeDeleted = false);
     Task<IEnumerable<ApplicationUser>> GetPaginatedAsync(int pageNumber, int pageSize, bool includeDeleted = false);
     Task<int> GetTotalCountAsync(bool includeDeleted = false);
     Task<IdentityResult> CreateAsync(ApplicationUser user, string password);
+    Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName);
     Task<IdentityResult> UpdateAsync(ApplicationUser user);
+    Task<IdentityResult> UpdateUserAsync(ApplicationUser user);
     Task<IdentityResult> DeleteAsync(ApplicationUser user);
     Task<IdentityResult> SoftDeleteAsync(ApplicationUser user, string deletedBy);
 
@@ -30,6 +35,7 @@ public interface IUserRepository
 
     // Role management
     Task<IList<string>> GetRolesAsync(ApplicationUser user);
+    Task<IList<string>> GetUserRolesAsync(ApplicationUser user);
     Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role);
     Task<IdentityResult> AddToRoleAsync(ApplicationUser user, string role, int? assignedBy);
     Task<IdentityResult> RemoveFromRoleAsync(ApplicationUser user, string role);
@@ -44,10 +50,6 @@ public interface IUserRepository
     Task<string> GenerateUserTokenAsync(ApplicationUser user, string tokenProvider, string purpose);
     Task<bool> VerifyUserTokenAsync(ApplicationUser user, string tokenProvider, string purpose, string token);
 
-    // Refresh tokens
-    Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId);
-    Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId);
-    Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken);
 
     // Search and filtering
     Task<IEnumerable<ApplicationUser>> SearchUsersAsync(string searchTerm, int pageNumber = 1, int pageSize = 10);

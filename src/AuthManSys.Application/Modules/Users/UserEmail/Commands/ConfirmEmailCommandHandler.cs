@@ -7,14 +7,10 @@ namespace AuthManSys.Application.Modules.Users.UserEmail.Commands;
 public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, ConfirmEmailResponse>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IIdentityProvider _identityProvider;
 
-    public ConfirmEmailCommandHandler(
-        IUserRepository userRepository,
-        IIdentityProvider identityProvider)
+    public ConfirmEmailCommandHandler(IUserRepository userRepository)
     {
         _userRepository = userRepository;
-        _identityProvider = identityProvider;
     }
 
     public async Task<ConfirmEmailResponse> Handle(ConfirmEmailCommand request, CancellationToken cancellationToken)

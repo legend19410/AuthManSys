@@ -7,6 +7,7 @@ using AuthManSys.Application.Modules.Auth.Login.Commands;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Identity;
 using AuthManSys.Domain.Entities;
@@ -17,7 +18,8 @@ public class AuthControllerTests
 {
     private readonly Mock<IMediator> _mockMediator;
     private readonly Mock<ILogger<AuthController>> _mockLogger;
-    private readonly Mock<IIdentityProvider> _mockIdentityProvider;
+    private readonly Mock<IJwtService> _mockJwtService;
+    private readonly Mock<ITokenRepository> _mockTokenRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
     private readonly AuthController _controller;
@@ -26,14 +28,15 @@ public class AuthControllerTests
     {
         _mockMediator = new Mock<IMediator>();
         _mockLogger = new Mock<ILogger<AuthController>>();
-        _mockIdentityProvider = new Mock<IIdentityProvider>();
+        _mockJwtService = new Mock<IJwtService>();
+        _mockTokenRepository = new Mock<ITokenRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
         _mockSignInManager = new Mock<SignInManager<ApplicationUser>>(
             new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null).Object,
             new Mock<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>().Object,
             new Mock<Microsoft.AspNetCore.Identity.IUserConfirmation<ApplicationUser>>().Object,
             null, null, null, null);
-        _controller = new AuthController(_mockMediator.Object, _mockLogger.Object, _mockIdentityProvider.Object, _mockUserRepository.Object, _mockSignInManager.Object);
+        _controller = new AuthController(_mockMediator.Object, _mockLogger.Object, _mockJwtService.Object, _mockTokenRepository.Object, _mockUserRepository.Object, _mockSignInManager.Object);
     }
 
     [Fact]

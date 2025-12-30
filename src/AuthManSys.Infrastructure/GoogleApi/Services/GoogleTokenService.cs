@@ -3,7 +3,7 @@ using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace AuthManSys.Infrastructure.Services;
+namespace AuthManSys.Infrastructure.GoogleApi.Services;
 
 public class GoogleTokenService : IGoogleTokenService
 {

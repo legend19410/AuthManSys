@@ -6,12 +6,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Google;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models;
+using AuthManSys.Application.Common.Services;
 using AuthManSys.Infrastructure.Database.DbContext;
 using AuthManSys.Domain.Entities;
-using AuthManSys.Infrastructure.Services;
 using AuthManSys.Infrastructure.Authorization;
 using AuthManSys.Infrastructure.Database.Repositories;
-using AuthManSys.Infrastructure.Identity;
+using AuthManSys.Infrastructure.Email;
+using AuthManSys.Infrastructure.Cache;
 using AuthManSys.Infrastructure.GoogleApi.Configuration;
 using AuthManSys.Infrastructure.GoogleApi.Authentication;
 using AuthManSys.Infrastructure.GoogleApi.Services;
@@ -87,7 +88,7 @@ public static class ServiceCollectionExtensions
         // DbContext is now encapsulated within repositories
 
         // Add Identity Provider (Infrastructure)
-        services.AddScoped<IIdentityProvider, IdentityProvider>();
+        // services.AddScoped<IIdentityProvider, IdentityProvider>(); // REMOVED - functionality moved to UserRepository, JwtService, and TokenRepository
 
 
         services.AddScoped<IPermissionCacheManager, PermissionCacheManager>();
@@ -108,19 +109,20 @@ public static class ServiceCollectionExtensions
         // Add Email Service
         services.AddScoped<IEmailService, EmailService>();
 
-        // Add Two-Factor Authentication Service
+        // Add Two-Factor Authentication Service (from Application layer)
         services.AddScoped<ITwoFactorService, TwoFactorService>();
 
         // Add Google Token Service
         services.AddScoped<IGoogleTokenService, GoogleTokenService>();
 
-        // Add Activity Logging Service
-        services.AddScoped<IActivityLogService, ActivityLogService>();
+        // Add Activity Logging Repository
+        services.AddScoped<IActivityLogRepository, ActivityLogRepository>();
 
         // Add Repository Services
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<ITokenRepository, TokenRepository>();
 
         // Add Google API services
         services.AddGoogleApiServices(configuration);

@@ -8,18 +8,16 @@ namespace AuthManSys.Application.Modules.Auth.UserRegistration.Commands;
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, RegisterResponse>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IIdentityProvider _identityProvider;
 
-    public RegisterUserCommandHandler(IUserRepository userRepository, IIdentityProvider identityProvider)
+    public RegisterUserCommandHandler(IUserRepository userRepository)
     {
         _userRepository = userRepository;
-        _identityProvider = identityProvider;
     }
 
     public async Task<RegisterResponse> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
-        // Create user using IdentityProvider
-        var result = await _identityProvider.CreateUserAsync(
+        // Create user using UserRepository
+        var result = await _userRepository.CreateUserAsync(
             request.Username,
             request.Email,
             request.Password,

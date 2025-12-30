@@ -10,12 +10,12 @@ namespace AuthManSys.Application.Modules.Auth.PasswordManagement.Commands;
 public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordCommand, ChangePasswordResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IActivityLogRepository _activityLogRepository;
 
-    public ChangePasswordCommandHandler(UserManager<ApplicationUser> userManager, IActivityLogService activityLogService)
+    public ChangePasswordCommandHandler(UserManager<ApplicationUser> userManager, IActivityLogRepository activityLogService)
     {
         _userManager = userManager;
-        _activityLogService = activityLogService;
+        _activityLogRepository = activityLogService;
     }
 
     public async Task<ChangePasswordResponse> Handle(ChangePasswordCommand request, CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
             if (!isCurrentPasswordValid)
             {
                 // Log failed password change attempt
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: user.UserId,
                     eventType: ActivityEventType.PasswordResetFailed,
                     description: $"Password change failed for user: {user.UserName} - Invalid current password",
@@ -49,7 +49,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
             if (result.Succeeded)
             {
                 // Log successful password change
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: user.UserId,
                     eventType: ActivityEventType.PasswordChanged,
                     description: $"Password changed successfully for user: {user.UserName}",
@@ -62,7 +62,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
 
             // Log failed password change due to validation errors
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.PasswordResetFailed,
                 description: $"Password change failed for user: {user.UserName} - Validation errors",

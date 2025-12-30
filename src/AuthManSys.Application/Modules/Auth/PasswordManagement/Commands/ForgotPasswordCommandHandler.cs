@@ -13,16 +13,16 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IEmailService _emailService;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IActivityLogRepository _activityLogRepository;
 
     public ForgotPasswordCommandHandler(
         UserManager<ApplicationUser> userManager,
         IEmailService emailService,
-        IActivityLogService activityLogService)
+        IActivityLogRepository activityLogService)
     {
         _userManager = userManager;
         _emailService = emailService;
-        _activityLogService = activityLogService;
+        _activityLogRepository = activityLogService;
     }
 
     public async Task<ForgotPasswordResponse> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
@@ -33,7 +33,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
             if (user == null)
             {
                 // Log failed password reset attempt for non-existent email
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: null,
                     eventType: ActivityEventType.PasswordResetRequested,
                     description: $"Password reset requested for non-existent email: {request.Email}",
@@ -67,7 +67,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
             await _emailService.SendEmailAsync(request.Email, emailSubject, emailBody);
 
             // Log successful password reset request
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.PasswordResetRequested,
                 description: $"Password reset requested for user: {user.UserName}",

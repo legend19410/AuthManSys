@@ -11,6 +11,7 @@ using AuthManSys.Application.Modules.Auth.PermissionManagement.Queries;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Services;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Api.Models;
 using MediatR;
@@ -29,20 +30,23 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
-    private readonly IIdentityProvider _identityProvider;
+    private readonly IJwtService _jwtService;
+    private readonly ITokenRepository _tokenRepository;
     private readonly IUserRepository _userRepository;
     private readonly SignInManager<ApplicationUser> _signInManager;
 
     public AuthController(
         IMediator mediator,
         ILogger<AuthController> logger,
-        IIdentityProvider identityProvider,
+        IJwtService jwtService,
+        ITokenRepository tokenRepository,
         IUserRepository userRepository,
         SignInManager<ApplicationUser> signInManager)
     {
         _mediator = mediator;
         _logger = logger;
-        _identityProvider = identityProvider;
+        _jwtService = jwtService;
+        _tokenRepository = tokenRepository;
         _userRepository = userRepository;
         _signInManager = signInManager;
     }
@@ -541,7 +545,7 @@ public class AuthController : ControllerBase
             return BadRequest("Required information missing from Google response");
         }
 
-        var user = await _identityProvider.FindByEmailAsync(email);
+        var user = await _userRepository.FindByEmailAsync(email);
 
         if (user == null)
         {
@@ -550,7 +554,7 @@ public class AuthController : ControllerBase
             var firstName = names.Length > 0 ? names[0] : email.Split('@')[0];
             var lastName = names.Length > 1 ? string.Join(" ", names.Skip(1)) : "";
 
-            var result = await _identityProvider.CreateUserAsync(
+            var result = await _userRepository.CreateUserAsync(
                 email,
                 email,
                 Guid.NewGuid().ToString(), // Random password since it won't be used
@@ -563,7 +567,7 @@ public class AuthController : ControllerBase
                 return BadRequest("Failed to create user account");
             }
 
-            user = await _identityProvider.FindByEmailAsync(email);
+            user = await _userRepository.FindByEmailAsync(email);
             if (user == null)
             {
                 return BadRequest("Failed to retrieve created user");
@@ -595,8 +599,8 @@ public class AuthController : ControllerBase
         await _signInManager.SignInAsync(user, isPersistent: false);
 
         // Generate JWT token
-        var roles = await _identityProvider.GetUserRolesAsync(user);
-        var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
+        var roles = await _userRepository.GetUserRolesAsync(user);
+        var token = _jwtService.GenerateAccessToken(user.UserName!, user.Email!, user.Id, roles);
 
         _logger.LogInformation("User {Email} successfully logged in via Google", email);
 

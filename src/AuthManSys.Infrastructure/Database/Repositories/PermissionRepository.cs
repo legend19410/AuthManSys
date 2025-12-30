@@ -201,8 +201,12 @@ public class PermissionRepository : IPermissionRepository
             _context.RolePermissions.Add(rolePermission);
             await _context.SaveChangesAsync();
 
-            // Clear cache
-            await _cacheManager.ClearRoleCacheAsync(roleId);
+            // Clear cache - get users with this role and clear their caches
+            var usersWithRole = await _context.UserRoles
+                .Where(ur => ur.RoleId == roleId)
+                .Select(ur => ur.UserId)
+                .ToListAsync();
+            _cacheManager.ClearRoleCache(roleId, usersWithRole);
         }
     }
 
@@ -222,8 +226,12 @@ public class PermissionRepository : IPermissionRepository
             _context.RolePermissions.Remove(rolePermission);
             await _context.SaveChangesAsync();
 
-            // Clear cache
-            await _cacheManager.ClearRoleCacheAsync(roleId);
+            // Clear cache - get users with this role and clear their caches
+            var usersWithRole = await _context.UserRoles
+                .Where(ur => ur.RoleId == roleId)
+                .Select(ur => ur.UserId)
+                .ToListAsync();
+            _cacheManager.ClearRoleCache(roleId, usersWithRole);
         }
     }
 
@@ -309,7 +317,11 @@ public class PermissionRepository : IPermissionRepository
             {
                 if (roles.TryGetValue(roleName, out var roleId))
                 {
-                    await _cacheManager.ClearRoleCacheAsync(roleId);
+                    var usersWithRole = await _context.UserRoles
+                        .Where(ur => ur.RoleId == roleId)
+                        .Select(ur => ur.UserId)
+                        .ToListAsync();
+                    _cacheManager.ClearRoleCache(roleId, usersWithRole);
                 }
             }
         }
@@ -381,7 +393,11 @@ public class PermissionRepository : IPermissionRepository
             {
                 if (roles.TryGetValue(roleName, out var roleId))
                 {
-                    await _cacheManager.ClearRoleCacheAsync(roleId);
+                    var usersWithRole = await _context.UserRoles
+                        .Where(ur => ur.RoleId == roleId)
+                        .Select(ur => ur.UserId)
+                        .ToListAsync();
+                    _cacheManager.ClearRoleCache(roleId, usersWithRole);
                 }
             }
         }
@@ -515,6 +531,10 @@ public class PermissionRepository : IPermissionRepository
 
     public async Task ClearRolePermissionCacheAsync(string roleId)
     {
-        await _cacheManager.ClearRoleCacheAsync(roleId);
+        var usersWithRole = await _context.UserRoles
+            .Where(ur => ur.RoleId == roleId)
+            .Select(ur => ur.UserId)
+            .ToListAsync();
+        _cacheManager.ClearRoleCache(roleId, usersWithRole);
     }
 }

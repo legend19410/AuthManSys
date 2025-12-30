@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Services;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Helpers;
@@ -12,19 +13,22 @@ namespace AuthManSys.Application.Modules.Auth.GoogleAuth.Commands;
 public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCommand, LoginResponse>
 {
     private readonly IGoogleTokenService _googleTokenService;
-    private readonly IIdentityProvider _identityProvider;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IUserRepository _userRepository;
+    private readonly IJwtService _jwtService;
+    private readonly IActivityLogRepository _activityLogRepository;
     private readonly ILogger<GoogleTokenLoginCommandHandler> _logger;
 
     public GoogleTokenLoginCommandHandler(
         IGoogleTokenService googleTokenService,
-        IIdentityProvider identityProvider,
-        IActivityLogService activityLogService,
+        IUserRepository userRepository,
+        IJwtService jwtService,
+        IActivityLogRepository activityLogService,
         ILogger<GoogleTokenLoginCommandHandler> logger)
     {
         _googleTokenService = googleTokenService;
-        _identityProvider = identityProvider;
-        _activityLogService = activityLogService;
+        _userRepository = userRepository;
+        _jwtService = jwtService;
+        _activityLogRepository = activityLogService;
         _logger = logger;
     }
 
@@ -34,7 +38,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
         var googlePayload = await _googleTokenService.VerifyTokenAsync(request.IdToken);
         if (googlePayload == null)
         {
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: null,
                 eventType: ActivityEventType.LoginFailed,
                 description: $"Google token login failed - Invalid token for username: {request.Username ?? "auto-generated"}",
@@ -49,17 +53,17 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
         // If username is provided, check if user exists by username first
         if (!string.IsNullOrWhiteSpace(request.Username))
         {
-            user = await _identityProvider.FindByUserNameAsync(request.Username);
+            user = await _userRepository.FindByUserNameAsync(request.Username);
         }
 
         if (user == null)
         {
             // Try to find by Google ID or email from token
-            // TODO: Need GetUserByGoogleIdAsync method in IIdentityProvider
-            // user = await _identityProvider.GetUserByGoogleIdAsync(googlePayload.Subject);
+            // TODO: Need GetUserByGoogleIdAsync method in IUserRepository
+            // user = await _userRepository.GetUserByGoogleIdAsync(googlePayload.Subject);
             if (user == null)
             {
-                user = await _identityProvider.FindByEmailAsync(googlePayload.Email);
+                user = await _userRepository.FindByEmailAsync(googlePayload.Email);
             }
         }
 
@@ -71,7 +75,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
                 ? request.Username
                 : googlePayload.Email;
 
-            var createUserResult = await _identityProvider.CreateUserAsync(
+            var createUserResult = await _userRepository.CreateUserAsync(
                 username,
                 googlePayload.Email,
                 Guid.NewGuid().ToString(), // Random password since it won't be used for Google auth
@@ -80,7 +84,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
 
             if (!createUserResult.Succeeded)
             {
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: null,
                     eventType: ActivityEventType.LoginError,
                     description: $"Failed to create new user during Google login for username: {username}",
@@ -94,7 +98,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
                 throw new UnauthorizedException($"Failed to create user: {string.Join(", ", createUserResult.Errors.Select(e => e.Description))}");
             }
 
-            user = await _identityProvider.FindByUserNameAsync(username);
+            user = await _userRepository.FindByUserNameAsync(username);
             if (user == null)
             {
                 throw new UnauthorizedException("Failed to retrieve created user");
@@ -107,9 +111,9 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
             user.GoogleLinkedAt = JamaicaTimeHelper.Now;
             user.EmailConfirmed = true; // Auto-confirm since Google verified it
 
-            await _identityProvider.UpdateUserAsync(user);
+            await _userRepository.UpdateUserAsync(user);
 
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.UserCreated,
                 description: $"New user created via Google login: {user.UserName}",
@@ -132,9 +136,9 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
             user.GoogleEmail = googlePayload.Email;
             user.IsGoogleAccount = true;
             user.GoogleLinkedAt = JamaicaTimeHelper.Now;
-            await _identityProvider.UpdateUserAsync(user);
+            await _userRepository.UpdateUserAsync(user);
 
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.AccountLinked,
                 description: $"Google account linked to existing user: {user.UserName}",
@@ -148,16 +152,16 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
 
         // Update last login timestamp
         user.LastLoginAt = JamaicaTimeHelper.Now;
-        await _identityProvider.UpdateUserAsync(user);
+        await _userRepository.UpdateUserAsync(user);
 
         // Get user roles
-        var roles = await _identityProvider.GetUserRolesAsync(user);
+        var roles = await _userRepository.GetUserRolesAsync(user);
 
         // Generate JWT token
-        var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
+        var token = _jwtService.GenerateAccessToken(user.UserName!, user.Email!, user.Id, roles);
 
         // Log successful login
-        await _activityLogService.LogActivityAsync(
+        await _activityLogRepository.LogActivityAsync(
             userId: user.UserId,
             eventType: ActivityEventType.LoginSuccess,
             description: $"Successful Google token login for user: {user.UserName}",

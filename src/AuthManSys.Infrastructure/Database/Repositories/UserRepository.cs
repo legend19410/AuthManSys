@@ -5,6 +5,7 @@ using AuthManSys.Infrastructure.Database.DbContext;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using AuthManSys.Application.Common.Helpers;
 
 namespace AuthManSys.Infrastructure.Database.Repositories;
 
@@ -415,19 +416,47 @@ public class UserRepository : IUserRepository
         return await _userManager.VerifyUserTokenAsync(user, tokenProvider, purpose, token);
     }
 
-    // Refresh token methods - simplified, but keeping for backwards compatibility
-    public Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId)
+    // Additional methods moved from IdentityProvider
+    public async Task<ApplicationUser?> FindByUserNameAsync(string userName)
     {
-        throw new NotImplementedException("Use IIdentityProvider.GenerateRefreshTokenAsync instead");
+        var user = await _userManager.FindByNameAsync(userName);
+        return user?.IsDeleted == true ? null : user;
     }
 
-    public Task<bool> ValidateRefreshTokenAsync(string refreshToken, string jwtId)
+    public async Task<ApplicationUser?> FindByEmailAsync(string email)
     {
-        throw new NotImplementedException("Use IIdentityProvider.ValidateRefreshTokenAsync instead");
+        var user = await _userManager.FindByEmailAsync(email);
+        return user?.IsDeleted == true ? null : user;
     }
 
-    public Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken)
+    public async Task<ApplicationUser?> FindByIdAsync(string userId)
     {
-        throw new NotImplementedException("Use IIdentityProvider.GetUserByRefreshTokenAsync instead");
+        var user = await _userManager.FindByIdAsync(userId);
+        return user?.IsDeleted == true ? null : user;
+    }
+
+    public async Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName)
+    {
+        var user = new ApplicationUser
+        {
+            UserName = username,
+            Email = email,
+            FirstName = firstName,
+            LastName = lastName,
+            EmailConfirmed = false,
+            LockoutEnabled = true
+        };
+
+        return await _userManager.CreateAsync(user, password);
+    }
+
+    public async Task<IdentityResult> UpdateUserAsync(ApplicationUser user)
+    {
+        return await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<IList<string>> GetUserRolesAsync(ApplicationUser user)
+    {
+        return await _userManager.GetRolesAsync(user);
     }
 }

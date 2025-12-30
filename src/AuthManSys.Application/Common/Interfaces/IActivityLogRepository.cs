@@ -3,7 +3,7 @@ using AuthManSys.Domain.Enums;
 
 namespace AuthManSys.Application.Common.Interfaces
 {
-    public interface IActivityLogService
+    public interface IActivityLogRepository
     {
         Task LogActivityAsync(
             int? userId,

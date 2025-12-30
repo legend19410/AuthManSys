@@ -3,9 +3,9 @@ namespace AuthManSys.Application.Common.Interfaces;
 public interface IPermissionCacheManager
 {
     /// <summary>
-    /// Clears all permission-related cache entries for a specific role
+    /// Clears all permission-related cache entries for a specific role and its users
     /// </summary>
-    Task ClearRoleCacheAsync(string roleId);
+    void ClearRoleCache(string roleId, IEnumerable<string> usersWithRole);
 
     /// <summary>
     /// Clears all permission-related cache entries for a specific user
@@ -13,9 +13,9 @@ public interface IPermissionCacheManager
     void ClearUserCache(string userId);
 
     /// <summary>
-    /// Clears all permission-related cache entries for users who have the specified role
+    /// Clears all permission-related cache entries for the specified users
     /// </summary>
-    Task ClearUserCachesByRoleAsync(string roleId);
+    void ClearUserCaches(IEnumerable<string> userIds);
 
     /// <summary>
     /// Clears all permission-related cache entries

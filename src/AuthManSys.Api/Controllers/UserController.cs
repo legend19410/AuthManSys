@@ -21,12 +21,12 @@ namespace AuthManSys.Api.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IActivityLogRepository _activityLogRepository;
 
-    public UserController(IMediator mediator, IActivityLogService activityLogService)
+    public UserController(IMediator mediator, IActivityLogRepository activityLogService)
     {
         _mediator = mediator;
-        _activityLogService = activityLogService;
+        _activityLogRepository = activityLogService;
     }
 
     [HttpGet("{userId:int}")]
@@ -257,7 +257,7 @@ public class UserController : ControllerBase
             return BadRequest(new { message = "Count must be between 1 and 100." });
         }
 
-        var activities = await _activityLogService.GetLastNUserActivitiesAsync(
+        var activities = await _activityLogRepository.GetLastNUserActivitiesAsync(
             userId,
             count,
             cancellationToken);

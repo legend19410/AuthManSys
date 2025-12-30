@@ -1,16 +1,13 @@
 using AuthManSys.Application.Common.Interfaces;
-using AuthManSys.Infrastructure.Database.DbContext;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
-namespace AuthManSys.Infrastructure.Services;
+namespace AuthManSys.Infrastructure.Cache;
 
 public class PermissionCacheManager : IPermissionCacheManager
 {
     private readonly IMemoryCache _cache;
-    private readonly AuthManSysDbContext _context;
     private readonly ILogger<PermissionCacheManager> _logger;
 
     // Thread-safe collections to track cache relationships
@@ -27,15 +24,13 @@ public class PermissionCacheManager : IPermissionCacheManager
 
     public PermissionCacheManager(
         IMemoryCache cache,
-        AuthManSysDbContext context,
         ILogger<PermissionCacheManager> logger)
     {
         _cache = cache;
-        _context = context;
         _logger = logger;
     }
 
-    public async Task ClearRoleCacheAsync(string roleId)
+    public void ClearRoleCache(string roleId, IEnumerable<string> usersWithRole)
     {
         try
         {
@@ -44,7 +39,7 @@ public class PermissionCacheManager : IPermissionCacheManager
             _cache.Remove(rolePermissionsCacheKey);
 
             // Clear all users who have this role
-            await ClearUserCachesByRoleAsync(roleId);
+            ClearUserCaches(usersWithRole);
 
             // Clear global permission caches that might be affected
             ClearDetailedRolePermissionMappingsCache();
@@ -72,39 +67,23 @@ public class PermissionCacheManager : IPermissionCacheManager
         }
     }
 
-    public async Task ClearUserCachesByRoleAsync(string roleId)
+    public void ClearUserCaches(IEnumerable<string> userIds)
     {
         try
         {
-            // Get all users who have this role from database
-            var usersWithRole = await _context.UserRoles
-                .Where(ur => ur.RoleId == roleId)
-                .Select(ur => ur.UserId)
-                .ToListAsync();
+            var userIdsList = userIds.ToList();
 
             // Clear cache for each user
-            foreach (var userId in usersWithRole)
+            foreach (var userId in userIdsList)
             {
                 ClearUserCache(userId);
             }
 
-            // Also check our in-memory tracking (fallback in case DB query fails)
-            lock (_lockObject)
-            {
-                if (_roleToUsersMap.TryGetValue(roleId, out var trackedUsers))
-                {
-                    foreach (var userId in trackedUsers)
-                    {
-                        ClearUserCache(userId);
-                    }
-                }
-            }
-
-            _logger.LogDebug("Cleared user caches for {UserCount} users with role {RoleId}", usersWithRole.Count, roleId);
+            _logger.LogDebug("Cleared user caches for {UserCount} users", userIdsList.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing user caches for role {RoleId}", roleId);
+            _logger.LogError(ex, "Error clearing user caches for provided users");
         }
     }
 

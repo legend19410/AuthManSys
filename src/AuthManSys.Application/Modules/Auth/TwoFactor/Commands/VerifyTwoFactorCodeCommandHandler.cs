@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Services;
 using AuthManSys.Application.Common.Helpers;
 using AuthManSys.Application.Common.Models.Responses;
 
@@ -9,18 +10,18 @@ namespace AuthManSys.Application.Modules.Auth.TwoFactor.Commands;
 public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactorCodeCommand, VerifyTwoFactorCodeResponse>
 {
     private readonly IUserRepository _userRepository;
-    private readonly IIdentityProvider _identityProvider;
+    private readonly IJwtService _jwtService;
     private readonly ITwoFactorService _twoFactorService;
     private readonly ILogger<VerifyTwoFactorCodeCommandHandler> _logger;
 
     public VerifyTwoFactorCodeCommandHandler(
         IUserRepository userRepository,
-        IIdentityProvider identityProvider,
+        IJwtService jwtService,
         ITwoFactorService twoFactorService,
         ILogger<VerifyTwoFactorCodeCommandHandler> logger)
     {
         _userRepository = userRepository;
-        _identityProvider = identityProvider;
+        _jwtService = jwtService;
         _twoFactorService = twoFactorService;
         _logger = logger;
     }
@@ -78,7 +79,8 @@ public class VerifyTwoFactorCodeCommandHandler : IRequestHandler<VerifyTwoFactor
             await _userRepository.UpdateAsync(user);
 
             // Generate access token
-            var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
+            var userRoles = await _userRepository.GetUserRolesAsync(user);
+            var token = _jwtService.GenerateAccessToken(user.UserName!, user.Email!, user.Id, userRoles);
 
             _logger.LogInformation("Two-factor authentication successful for user {Username}", request.Username);
             return new VerifyTwoFactorCodeResponse

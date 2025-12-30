@@ -11,20 +11,20 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
     private readonly IUserRepository _userRepository;
     private readonly ITwoFactorService _twoFactorService;
     private readonly IEmailService _emailService;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IActivityLogRepository _activityLogRepository;
     private readonly ILogger<SendTwoFactorCodeCommandHandler> _logger;
 
     public SendTwoFactorCodeCommandHandler(
         IUserRepository userRepository,
         ITwoFactorService twoFactorService,
         IEmailService emailService,
-        IActivityLogService activityLogService,
+        IActivityLogRepository activityLogService,
         ILogger<SendTwoFactorCodeCommandHandler> logger)
     {
         _userRepository = userRepository;
         _twoFactorService = twoFactorService;
         _emailService = emailService;
-        _activityLogService = activityLogService;
+        _activityLogRepository = activityLogService;
         _logger = logger;
     }
 
@@ -38,7 +38,7 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
                 _logger.LogWarning("User {Username} not found", request.Username);
 
                 // Log failed 2FA code request for non-existent user
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: null,
                     eventType: ActivityEventType.TwoFactorCodeRequestFailed,
                     description: $"Two-factor code requested for non-existent user: {request.Username}",
@@ -57,7 +57,7 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
                 _logger.LogWarning("Two-factor authentication is not enabled for user {Username}", request.Username);
 
                 // Log failed 2FA code request for user with 2FA disabled
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: user.UserId,
                     eventType: ActivityEventType.TwoFactorCodeRequestFailed,
                     description: $"Two-factor code requested for user with 2FA disabled: {user.UserName}",
@@ -92,7 +92,7 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
             await _emailService.SendTwoFactorCodeAsync(user.Email!, user.UserName!, code);
 
             // Log successful 2FA code sending
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.TwoFactorCodeSent,
                 description: $"Two-factor authentication code sent to user: {user.UserName}",

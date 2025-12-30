@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using AuthManSys.Application.Common.Exceptions;
 using AuthManSys.Application.Common.Interfaces;
+using AuthManSys.Application.Common.Services;
 using AuthManSys.Application.Common.Helpers;
 using AuthManSys.Domain.Entities;
 using AuthManSys.Domain.Enums;
@@ -13,29 +14,35 @@ namespace AuthManSys.Application.Modules.Auth.Login.Commands;
 
 public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 {
-    private readonly IIdentityProvider _identityProvider;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IUserRepository _userRepository;
+    private readonly IJwtService _jwtService;
+    private readonly ITokenRepository _tokenRepository;
+    private readonly IActivityLogRepository _activityLogRepository;
     private readonly IMediator _mediator;
 
     public LoginCommandHandler(
-        IIdentityProvider identityProvider,
-        IActivityLogService activityLogService,
+        IUserRepository userRepository,
+        IJwtService jwtService,
+        ITokenRepository tokenRepository,
+        IActivityLogRepository activityLogRepository,
         IMediator mediator
     )
     {
-        _identityProvider = identityProvider;
-        _activityLogService = activityLogService;
+        _userRepository = userRepository;
+        _jwtService = jwtService;
+        _tokenRepository = tokenRepository;
+        _activityLogRepository = activityLogRepository;
         _mediator = mediator;
     }
 
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         // Find the user
-        var user = await _identityProvider.FindByUserNameAsync(request.Username);
+        var user = await _userRepository.FindByUserNameAsync(request.Username);
         if (user == null)
         {
             // Log failed login attempt
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: null,
                 eventType: ActivityEventType.LoginFailed,
                 description: $"Login attempt failed for non-existent user: {request.Username}",
@@ -46,11 +53,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         // Verify password
-        var isPasswordValid = await _identityProvider.CheckPasswordAsync(user, request.Password);
+        var isPasswordValid = await _userRepository.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
         {
             // Log failed login attempt
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.LoginFailed,
                 description: $"Login attempt failed for user: {user.UserName} - Invalid password",
@@ -61,7 +68,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         }
 
         // Check if email is confirmed
-        var isEmailConfirmed = await _identityProvider.IsEmailConfirmedAsync(user);
+        var isEmailConfirmed = await _userRepository.IsEmailConfirmedAsync(user);
         if (!isEmailConfirmed)
         {
             throw new UnauthorizedException("Email address is not confirmed");
@@ -71,7 +78,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         if (user.IsTwoFactorEnabled)
         {
             // Log two-factor required
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.TwoFactorRequired,
                 description: $"Two-factor authentication required for user: {user.UserName}",
@@ -85,7 +92,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
             if (!codeResult.IsCodeSent)
             {
                 // If we can't send the 2FA code, log and throw error
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: user.UserId,
                     eventType: ActivityEventType.TwoFactorCodeRequestFailed,
                     description: $"Failed to send 2FA code during login for user: {user.UserName}",
@@ -106,14 +113,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
 
         // Update last login timestamp
         user.LastLoginAt = JamaicaTimeHelper.Now;
-        await _identityProvider.UpdateUserAsync(user);
+        await _userRepository.UpdateUserAsync(user);
 
         // Get user roles
-        var roles = await _identityProvider.GetUserRolesAsync(user);
+        var roles = await _userRepository.GetUserRolesAsync(user);
         var role = roles.FirstOrDefault() ?? "User";
 
         //generate token
-        var token = _identityProvider.GenerateJwtToken(user.UserName!, user.Email!, user.Id);
+        var token = _jwtService.GenerateAccessToken(user.UserName!, user.Email!, user.Id, roles);
         string? refreshToken = null;
         DateTime? refreshTokenExpiration = null;
 
@@ -122,12 +129,12 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResponse>
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             var jwtToken = jwtTokenHandler.ReadJwtToken(token);
-            refreshToken = await _identityProvider.GenerateRefreshTokenAsync(user, jwtToken.Id);
+            refreshToken = await _tokenRepository.GenerateRefreshTokenAsync(user, jwtToken.Id);
             refreshTokenExpiration = JamaicaTimeHelper.Now.AddDays(30); // This should match your JWT settings
         }
 
         // Log successful login
-        await _activityLogService.LogActivityAsync(
+        await _activityLogRepository.LogActivityAsync(
             userId: user.UserId,
             eventType: ActivityEventType.LoginSuccess,
             description: $"Successful login for user: {user.UserName}",

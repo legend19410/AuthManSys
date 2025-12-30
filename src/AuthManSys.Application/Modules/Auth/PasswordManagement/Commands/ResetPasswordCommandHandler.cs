@@ -10,12 +10,12 @@ namespace AuthManSys.Application.Modules.Auth.PasswordManagement.Commands;
 public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand, ResetPasswordResponse>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IActivityLogService _activityLogService;
+    private readonly IActivityLogRepository _activityLogRepository;
 
-    public ResetPasswordCommandHandler(UserManager<ApplicationUser> userManager, IActivityLogService activityLogService)
+    public ResetPasswordCommandHandler(UserManager<ApplicationUser> userManager, IActivityLogRepository activityLogService)
     {
         _userManager = userManager;
-        _activityLogService = activityLogService;
+        _activityLogRepository = activityLogService;
     }
 
     public async Task<ResetPasswordResponse> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
@@ -26,7 +26,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             if (user == null)
             {
                 // Log failed password reset attempt for invalid email
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: null,
                     eventType: ActivityEventType.PasswordResetFailed,
                     description: $"Password reset failed - Invalid email: {request.Email}",
@@ -42,7 +42,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             if (result.Succeeded)
             {
                 // Log successful password reset
-                await _activityLogService.LogActivityAsync(
+                await _activityLogRepository.LogActivityAsync(
                     userId: user.UserId,
                     eventType: ActivityEventType.PasswordResetSuccess,
                     description: $"Password reset successfully for user: {user.UserName}",
@@ -55,7 +55,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
 
             // Log failed password reset due to validation errors or invalid token
-            await _activityLogService.LogActivityAsync(
+            await _activityLogRepository.LogActivityAsync(
                 userId: user.UserId,
                 eventType: ActivityEventType.PasswordResetFailed,
                 description: $"Password reset failed for user: {user.UserName} - {errors}",

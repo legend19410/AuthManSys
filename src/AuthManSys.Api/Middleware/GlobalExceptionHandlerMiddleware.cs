@@ -82,7 +82,7 @@ public class GlobalExceptionHandlerMiddleware
                 _logger.LogError(exception, "An unhandled exception occurred");
 
                 // Log the error using activity service if available
-                var activityLogService = context.RequestServices.GetService<IActivityLogService>();
+                var activityLogService = context.RequestServices.GetService<IActivityLogRepository>();
                 if (activityLogService != null)
                 {
                     try

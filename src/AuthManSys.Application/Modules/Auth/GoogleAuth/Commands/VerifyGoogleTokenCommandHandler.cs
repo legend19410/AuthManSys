@@ -7,18 +7,15 @@ namespace AuthManSys.Application.Modules.Auth.GoogleAuth.Commands;
 public class VerifyGoogleTokenCommandHandler : IRequestHandler<VerifyGoogleTokenCommand, VerifyGoogleTokenResponse>
 {
     private readonly IGoogleTokenService _googleTokenService;
-    private readonly IIdentityProvider _identityProvider;
     private readonly IUserRepository _userRepository;
     private readonly ILogger<VerifyGoogleTokenCommandHandler> _logger;
 
     public VerifyGoogleTokenCommandHandler(
         IGoogleTokenService googleTokenService,
-        IIdentityProvider identityProvider,
         IUserRepository userRepository,
         ILogger<VerifyGoogleTokenCommandHandler> logger)
     {
         _googleTokenService = googleTokenService;
-        _identityProvider = identityProvider;
         _userRepository = userRepository;
         _logger = logger;
     }
@@ -61,7 +58,7 @@ public class VerifyGoogleTokenCommandHandler : IRequestHandler<VerifyGoogleToken
         }
 
         // Check if user exists by email
-        var userByEmail = await _identityProvider.FindByEmailAsync(googlePayload.Email);
+        var userByEmail = await _userRepository.FindByEmailAsync(googlePayload.Email);
         if (userByEmail != null)
         {
             _logger.LogInformation("User found by email: {Email}", googlePayload.Email);

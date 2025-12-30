@@ -4,7 +4,7 @@ using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models;
 using Microsoft.Extensions.Options;
 
-namespace AuthManSys.Infrastructure.Services;
+namespace AuthManSys.Infrastructure.Email;
 
 public class EmailService : IEmailService
 {
