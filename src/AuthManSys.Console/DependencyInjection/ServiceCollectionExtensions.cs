@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDatabaseCommands, DatabaseCommands>();
         services.AddScoped<IInteractiveTests, InteractiveTests>();
         services.AddScoped<IGoogleDocsCommands, GoogleDocsCommands>();
+        services.AddScoped<IPdfCommands, PdfCommands>();
 
         return services;
     }

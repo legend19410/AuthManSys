@@ -118,5 +118,27 @@ namespace AuthManSys.Infrastructure.Database.Repositories
 
             return await query.CountAsync(cancellationToken);
         }
+
+        public async Task<IEnumerable<UserActivityLog>> GetAllActivitiesAsync(
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int pageNumber = 1,
+            int pageSize = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _context.UserActivityLogs.AsQueryable();
+
+            if (fromDate.HasValue)
+                query = query.Where(log => log.Timestamp >= fromDate.Value);
+
+            if (toDate.HasValue)
+                query = query.Where(log => log.Timestamp <= toDate.Value);
+
+            return await query
+                .OrderByDescending(log => log.Timestamp)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(cancellationToken);
+        }
     }
 }

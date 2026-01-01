@@ -16,6 +16,11 @@ using AuthManSys.Infrastructure.Cache;
 using AuthManSys.Infrastructure.GoogleApi.Configuration;
 using AuthManSys.Infrastructure.GoogleApi.Authentication;
 using AuthManSys.Infrastructure.GoogleApi.Services;
+using AuthManSys.Infrastructure.Pdf;
+using AuthManSys.Infrastructure.BackgroundJobs;
+using Hangfire;
+using Hangfire.SqlServer;
+using Hangfire.MemoryStorage;
 
 namespace AuthManSys.Infrastructure.DependencyInjection;
 
@@ -123,6 +128,59 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<ITokenRepository, TokenRepository>();
+
+        // Add PDF Service
+        services.AddScoped<IPdfService, PdfService>();
+
+        // Add Background Jobs
+        services.AddScoped<IActivityLogReportJob, ActivityLogReportJob>();
+
+        // Configure Hangfire
+        string connectionString;
+
+        if (databaseProvider.ToUpper() == "SQLSERVER")
+        {
+            connectionString = configuration.GetConnectionString("SqlServerConnection")!;
+        }
+        else
+        {
+            connectionString = configuration.GetConnectionString("MySqlConnection")!;
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException($"No {databaseProvider} connection string found for Hangfire configuration.");
+        }
+
+        services.AddHangfire(config =>
+        {
+            var configuration = config
+                .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                .UseSimpleAssemblyNameTypeSerializer()
+                .UseRecommendedSerializerSettings();
+
+            if (databaseProvider.ToUpper() == "SQLSERVER")
+            {
+                configuration.UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+                {
+                    CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                    SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                    QueuePollInterval = TimeSpan.Zero,
+                    UseRecommendedIsolationLevel = true,
+                    DisableGlobalLocks = true
+                });
+            }
+            else if (databaseProvider.ToUpper() == "MYSQL")
+            {
+                // For MySQL, we'll use in-memory storage as a fallback since MySQL support is limited
+                configuration.UseMemoryStorage();
+            }
+        });
+
+        services.AddHangfireServer(options =>
+        {
+            options.WorkerCount = Math.Max(Environment.ProcessorCount, 20);
+        });
 
         // Add Google API services
         services.AddGoogleApiServices(configuration);

@@ -4,6 +4,9 @@ using AuthManSys.Api.DependencyInjection;
 using AuthManSys.Infrastructure.Database.DbContext;
 using AuthManSys.Api.Middleware;
 using Microsoft.EntityFrameworkCore;
+using Hangfire;
+using Hangfire.Dashboard;
+using AuthManSys.Application.Common.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -48,7 +51,29 @@ app.UseCors("AuthManSysCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Add Hangfire Dashboard (only in development for security)
+if (app.Environment.IsDevelopment())
+{
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = Array.Empty<IDashboardAuthorizationFilter>()
+    });
+}
+
 app.MapControllers();
+
+// Configure recurring jobs
+using (var scope = app.Services.CreateScope())
+{
+    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
+
+    // Schedule the activity report job to run every minute
+    recurringJobManager.AddOrUpdate<IActivityLogReportJob>(
+        "user-activity-report",
+        job => job.GenerateUserActivityReportAsync(),
+        Cron.Minutely); // This will run every minute
+}
+
 app.Run();
 
 // Make Program class accessible for testing

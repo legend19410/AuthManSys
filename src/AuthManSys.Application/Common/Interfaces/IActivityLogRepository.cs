@@ -41,5 +41,12 @@ namespace AuthManSys.Application.Common.Interfaces
             DateTime? fromDate = null,
             DateTime? toDate = null,
             CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<UserActivityLog>> GetAllActivitiesAsync(
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int pageNumber = 1,
+            int pageSize = 1000,
+            CancellationToken cancellationToken = default);
     }
 }

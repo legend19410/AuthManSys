@@ -27,12 +27,14 @@ class Program
         var authCommand = CreateAuthCommand(host);
         var dbCommand = CreateDatabaseCommand(host);
         var googleCommand = CreateGoogleDocsCommand(host);
+        var pdfCommand = CreatePdfCommand(host);
 
         rootCommand.AddCommand(menuCommand);
         rootCommand.AddCommand(userCommand);
         rootCommand.AddCommand(authCommand);
         rootCommand.AddCommand(dbCommand);
         rootCommand.AddCommand(googleCommand);
+        rootCommand.AddCommand(pdfCommand);
 
         // Set handlers
         menuCommand.SetHandler(async () =>
@@ -58,6 +60,8 @@ class Program
                 SafeConsole.WriteLine("  google create  - Create a new Google Document");
                 SafeConsole.WriteLine("  google write   - Write content to a Google Document");
                 SafeConsole.WriteLine("  google list    - List Google Documents");
+                SafeConsole.WriteLine("  pdf test     - Test PDF generation functionality");
+                SafeConsole.WriteLine("  pdf report   - Generate test activity report");
                 SafeConsole.WriteLine("  menu         - Start interactive menu (requires console input)");
                 SafeConsole.WriteLine();
                 SafeConsole.WriteLine("Example: dotnet run -- db status");
@@ -255,5 +259,31 @@ class Program
         googleCommand.AddCommand(exportCommand);
 
         return googleCommand;
+    }
+
+    static Command CreatePdfCommand(IHost host)
+    {
+        var pdfCommand = new Command("pdf", "PDF operations");
+
+        var testCommand = new Command("test", "Test PDF generation functionality");
+        var reportCommand = new Command("report", "Generate test activity report");
+
+        // Add handlers for PDF commands
+        testCommand.SetHandler(async () =>
+        {
+            var pdfCommands = host.Services.GetRequiredService<IPdfCommands>();
+            await pdfCommands.TestPdfGenerationAsync();
+        });
+
+        reportCommand.SetHandler(async () =>
+        {
+            var pdfCommands = host.Services.GetRequiredService<IPdfCommands>();
+            await pdfCommands.GenerateTestReportAsync();
+        });
+
+        pdfCommand.AddCommand(testCommand);
+        pdfCommand.AddCommand(reportCommand);
+
+        return pdfCommand;
     }
 }
