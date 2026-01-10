@@ -6,7 +6,7 @@ namespace AuthManSys.Application.Common.Interfaces;
 
 public interface IAuthManSysDbContext
 {
-    DbSet<AuthManSys.Domain.Entities.RefreshToken> RefreshTokens { get; set; }
+    DbSet<RefreshToken> RefreshTokens { get; set; }
     DbSet<UserActivityLog> UserActivityLogs { get; set; }
     Task<UserInformationResponse?> GetUserInformationAsync(int userId, CancellationToken cancellationToken = default);
     Task<UserInformationResponse?> GetUserInformationByUsernameAsync(string username, CancellationToken cancellationToken = default);

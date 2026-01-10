@@ -7,10 +7,10 @@ using Microsoft.AspNetCore.Authentication.Google;
 using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Services;
-using AuthManSys.Infrastructure.Database.DbContext;
-using AuthManSys.Domain.Entities;
+using AuthManSys.Infrastructure.Database.EFCore.DbContext;
+using AuthManSys.Infrastructure.Database.Entities;
 using AuthManSys.Infrastructure.Authorization;
-using AuthManSys.Infrastructure.Database.Repositories;
+using AuthManSys.Infrastructure.Database.EFCore.Repositories;
 using AuthManSys.Infrastructure.Email;
 using AuthManSys.Infrastructure.Cache;
 using AuthManSys.Infrastructure.GoogleApi.Configuration;
@@ -116,6 +116,9 @@ public static class ServiceCollectionExtensions
 
         // Add Two-Factor Authentication Service (from Application layer)
         services.AddScoped<ITwoFactorService, TwoFactorService>();
+
+        // Add AutoMapper
+        services.AddAutoMapper(typeof(AuthManSys.Infrastructure.Mapping.DomainToEntityMappingProfile));
 
         // Add Google Token Service
         services.AddScoped<IGoogleTokenService, GoogleTokenService>();

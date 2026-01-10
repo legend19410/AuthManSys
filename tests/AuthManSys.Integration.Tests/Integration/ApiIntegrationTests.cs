@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using AuthManSys.Api.Models;
 using AuthManSys.Api.Models.Responses;
-using AuthManSys.Infrastructure.Database.DbContext;
+using AuthManSys.Infrastructure.Database.EFCore.DbContext;
 
 namespace AuthManSys.Tests.Integration;
 

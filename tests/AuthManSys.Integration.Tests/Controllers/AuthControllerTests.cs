@@ -10,7 +10,7 @@ using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Identity;
-using AuthManSys.Domain.Entities;
+using AuthManSys.Infrastructure.Database.Entities;
 
 namespace AuthManSys.Tests.Controllers;
 
@@ -22,6 +22,7 @@ public class AuthControllerTests
     private readonly Mock<ITokenRepository> _mockTokenRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<SignInManager<ApplicationUser>> _mockSignInManager;
+    private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
@@ -31,12 +32,13 @@ public class AuthControllerTests
         _mockJwtService = new Mock<IJwtService>();
         _mockTokenRepository = new Mock<ITokenRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
+        _mockUserManager = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
         _mockSignInManager = new Mock<SignInManager<ApplicationUser>>(
-            new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null).Object,
+            _mockUserManager.Object,
             new Mock<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>().Object,
             new Mock<Microsoft.AspNetCore.Identity.IUserConfirmation<ApplicationUser>>().Object,
             null, null, null, null);
-        _controller = new AuthController(_mockMediator.Object, _mockLogger.Object, _mockJwtService.Object, _mockTokenRepository.Object, _mockUserRepository.Object, _mockSignInManager.Object);
+        _controller = new AuthController(_mockMediator.Object, _mockLogger.Object, _mockJwtService.Object, _mockTokenRepository.Object, _mockUserRepository.Object, _mockSignInManager.Object, _mockUserManager.Object);
     }
 
     [Fact]

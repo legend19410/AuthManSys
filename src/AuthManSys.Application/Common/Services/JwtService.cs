@@ -55,7 +55,7 @@ public class JwtService : IJwtService
         return tokenHandler.WriteToken(token);
     }
 
-    public string GenerateAccessToken(ApplicationUser user, IList<string>? roles = null)
+    public string GenerateAccessToken(User user, IList<string>? roles = null)
     {
         return GenerateAccessToken(
             user.UserName ?? string.Empty,

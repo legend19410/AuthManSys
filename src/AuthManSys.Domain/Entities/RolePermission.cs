@@ -1,24 +1,38 @@
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Identity;
-
 namespace AuthManSys.Domain.Entities;
 
 public class RolePermission
 {
-    [Key]
-    public int Id { get; set; }
+    public int Id { get; private set; }
+    public Guid RoleId { get; private set; }
+    public int PermissionId { get; private set; }
+    public DateTime GrantedAt { get; private set; }
+    public string? GrantedBy { get; private set; }
 
-    [Required]
-    public string RoleId { get; set; } = string.Empty;
+    // Navigation properties for domain logic
+    public Role Role { get; private set; } = null!;
+    public Permission Permission { get; private set; } = null!;
 
-    [Required]
-    public int PermissionId { get; set; }
+    private RolePermission() { } // For ORM
 
-    public DateTime GrantedAt { get; set; } = DateTime.UtcNow;
+    public RolePermission(
+        Guid roleId,
+        int permissionId,
+        string? grantedBy = null
+    )
+    {
+        RoleId = roleId;
+        PermissionId = permissionId;
+        GrantedAt = DateTime.UtcNow;
+        GrantedBy = grantedBy;
+    }
 
-    public string? GrantedBy { get; set; }
+    // Domain behaviors
+    public bool IsGrantedBy(string userId)
+        => GrantedBy == userId;
 
-    // Navigation properties
-    public virtual IdentityRole Role { get; set; } = null!;
-    public virtual Permission Permission { get; set; } = null!;
+    public bool IsForRole(Guid roleId)
+        => RoleId == roleId;
+
+    public bool IsForPermission(int permissionId)
+        => PermissionId == permissionId;
 }

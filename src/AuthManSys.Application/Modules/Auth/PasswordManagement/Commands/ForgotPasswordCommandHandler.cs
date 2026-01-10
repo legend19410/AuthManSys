@@ -1,9 +1,7 @@
 
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Interfaces;
-using AuthManSys.Domain.Entities;
 using AuthManSys.Domain.Enums;
 using System.Web;
 
@@ -11,16 +9,16 @@ namespace AuthManSys.Application.Modules.Auth.PasswordManagement.Commands;
 
 public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordCommand, ForgotPasswordResponse>
 {
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IActivityLogRepository _activityLogRepository;
 
     public ForgotPasswordCommandHandler(
-        UserManager<ApplicationUser> userManager,
+        IUserRepository userRepository,
         IEmailService emailService,
         IActivityLogRepository activityLogService)
     {
-        _userManager = userManager;
+        _userRepository = userRepository;
         _emailService = emailService;
         _activityLogRepository = activityLogService;
     }
@@ -29,7 +27,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
     {
         try
         {
-            var user = await _userManager.FindByEmailAsync(request.Email);
+            var user = await _userRepository.FindByEmailAsync(request.Email);
             if (user == null)
             {
                 // Log failed password reset attempt for non-existent email
@@ -45,7 +43,7 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
             }
 
             // Generate password reset token
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var token = await _userRepository.GeneratePasswordResetTokenAsync(user);
             var encodedToken = HttpUtility.UrlEncode(token);
 
             // Create reset link (you can customize the URL as needed)

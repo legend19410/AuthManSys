@@ -1,20 +1,18 @@
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Interfaces;
-using AuthManSys.Domain.Entities;
 using AuthManSys.Domain.Enums;
 
 namespace AuthManSys.Application.Modules.Auth.PasswordManagement.Commands;
 
 public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordCommand, ChangePasswordResponse>
 {
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserRepository _userRepository;
     private readonly IActivityLogRepository _activityLogRepository;
 
-    public ChangePasswordCommandHandler(UserManager<ApplicationUser> userManager, IActivityLogRepository activityLogService)
+    public ChangePasswordCommandHandler(IUserRepository userRepository, IActivityLogRepository activityLogService)
     {
-        _userManager = userManager;
+        _userRepository = userRepository;
         _activityLogRepository = activityLogService;
     }
 
@@ -22,14 +20,14 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
     {
         try
         {
-            var user = await _userManager.FindByNameAsync(request.Username);
+            var user = await _userRepository.FindByUserNameAsync(request.Username);
             if (user == null)
             {
                 return new ChangePasswordResponse(false, "User not found.");
             }
 
             // Verify current password
-            var isCurrentPasswordValid = await _userManager.CheckPasswordAsync(user, request.CurrentPassword);
+            var isCurrentPasswordValid = await _userRepository.CheckPasswordAsync(user, request.CurrentPassword);
             if (!isCurrentPasswordValid)
             {
                 // Log failed password change attempt
@@ -44,7 +42,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
             }
 
             // Change password
-            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            var result = await _userRepository.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
 
             if (result.Succeeded)
             {

@@ -1,7 +1,7 @@
 using MediatR;
 using AuthManSys.Application.Modules.Auth.Login.Commands;
 using Microsoft.AspNetCore.Identity;
-using AuthManSys.Domain.Entities;
+using AuthManSys.Infrastructure.Database.Entities;
 using Console = System.Console;
 
 namespace AuthManSys.Console.Commands;

@@ -7,7 +7,7 @@ public interface ITokenRepository
     /// <summary>
     /// Generate and store a new refresh token
     /// </summary>
-    Task<string> GenerateRefreshTokenAsync(ApplicationUser user, string jwtId);
+    Task<string> GenerateRefreshTokenAsync(User user, string jwtId);
 
     /// <summary>
     /// Validate if refresh token exists and is valid
@@ -17,7 +17,7 @@ public interface ITokenRepository
     /// <summary>
     /// Get user by refresh token
     /// </summary>
-    Task<ApplicationUser?> GetUserByRefreshTokenAsync(string refreshToken);
+    Task<User?> GetUserByRefreshTokenAsync(string refreshToken);
 
     /// <summary>
     /// Mark refresh token as used

@@ -18,7 +18,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.Google;
-using AuthManSys.Domain.Entities;
+using AuthManSys.Infrastructure.Database.Entities;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 
@@ -34,6 +34,7 @@ public class AuthController : ControllerBase
     private readonly ITokenRepository _tokenRepository;
     private readonly IUserRepository _userRepository;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public AuthController(
         IMediator mediator,
@@ -41,7 +42,8 @@ public class AuthController : ControllerBase
         IJwtService jwtService,
         ITokenRepository tokenRepository,
         IUserRepository userRepository,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager)
     {
         _mediator = mediator;
         _logger = logger;
@@ -49,6 +51,7 @@ public class AuthController : ControllerBase
         _tokenRepository = tokenRepository;
         _userRepository = userRepository;
         _signInManager = signInManager;
+        _userManager = userManager;
     }
 
     [HttpPost("login")]
@@ -595,8 +598,13 @@ public class AuthController : ControllerBase
             }
         }
 
-        // Sign in the user
-        await _signInManager.SignInAsync(user, isPersistent: false);
+        // Sign in the user - get ApplicationUser for SignInManager
+        var applicationUser = await _userManager.FindByEmailAsync(user.Email!);
+        if (applicationUser == null)
+        {
+            return BadRequest("Failed to retrieve user for sign-in");
+        }
+        await _signInManager.SignInAsync(applicationUser, isPersistent: false);
 
         // Generate JWT token
         var roles = await _userRepository.GetUserRolesAsync(user);

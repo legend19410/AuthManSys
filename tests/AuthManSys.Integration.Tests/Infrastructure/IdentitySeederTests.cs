@@ -2,9 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using AuthManSys.Infrastructure.Database.DbContext;
-using AuthManSys.Domain.Entities;
-using AuthManSys.Infrastructure.Database.Seeder;
+using AuthManSys.Infrastructure.Database.EFCore.DbContext;
+using AuthManSys.Infrastructure.Database.Entities;
+using AuthManSys.Infrastructure.Database.EFCore.Seeder;
 
 namespace AuthManSys.Tests.Infrastructure;
 
@@ -80,9 +80,9 @@ public class IdentitySeederTests
             EmailConfirmed = true,
             FirstName = "Existing",
             LastName = "User",
-            EmailConfirmationToken = string.Empty,
-            PasswordResetToken = string.Empty,
-            RequestVerificationToken = string.Empty,
+            EmailConfirmationToken = null,
+            PasswordResetToken = null,
+            RequestVerificationToken = null,
             TermsConditionsAccepted = true,
             LastPasswordChangedDate = DateTime.UtcNow
         };

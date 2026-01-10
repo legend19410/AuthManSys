@@ -48,7 +48,7 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
             throw new UnauthorizedException("Invalid Google token");
         }
 
-        ApplicationUser? user = null;
+        User? user = null;
 
         // If username is provided, check if user exists by username first
         if (!string.IsNullOrWhiteSpace(request.Username))

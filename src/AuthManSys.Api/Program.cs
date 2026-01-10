@@ -1,7 +1,7 @@
 using AuthManSys.Infrastructure.DependencyInjection;
 using AuthManSys.Application.DependencyInjection;
 using AuthManSys.Api.DependencyInjection;
-using AuthManSys.Infrastructure.Database.DbContext;
+using AuthManSys.Infrastructure.Database.EFCore.DbContext;
 using AuthManSys.Api.Middleware;
 using Microsoft.EntityFrameworkCore;
 using Hangfire;

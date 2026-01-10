@@ -11,9 +11,9 @@ public interface IJwtService
     string GenerateAccessToken(string username, string email, string userId, IList<string>? roles = null);
 
     /// <summary>
-    /// Generate JWT access token from ApplicationUser object
+    /// Generate JWT access token from User object
     /// </summary>
-    string GenerateAccessToken(ApplicationUser user, IList<string>? roles = null);
+    string GenerateAccessToken(User user, IList<string>? roles = null);
 
     /// <summary>
     /// Validate JWT token and return claims principal

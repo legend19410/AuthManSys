@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-using AuthManSys.Infrastructure.Database.DbContext;
-using AuthManSys.Domain.Entities;
-using AuthManSys.Infrastructure.Database.Seeder;
+using AuthManSys.Infrastructure.Database.EFCore.DbContext;
+using AuthManSys.Infrastructure.Database.Entities;
+using AuthManSys.Infrastructure.Database.EFCore.Seeder;
 
 namespace AuthManSys.Console.Commands;
 

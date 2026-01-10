@@ -1,20 +1,18 @@
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Interfaces;
-using AuthManSys.Domain.Entities;
 using AuthManSys.Domain.Enums;
 
 namespace AuthManSys.Application.Modules.Auth.PasswordManagement.Commands;
 
 public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand, ResetPasswordResponse>
 {
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserRepository _userRepository;
     private readonly IActivityLogRepository _activityLogRepository;
 
-    public ResetPasswordCommandHandler(UserManager<ApplicationUser> userManager, IActivityLogRepository activityLogService)
+    public ResetPasswordCommandHandler(IUserRepository userRepository, IActivityLogRepository activityLogService)
     {
-        _userManager = userManager;
+        _userRepository = userRepository;
         _activityLogRepository = activityLogService;
     }
 
@@ -22,7 +20,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     {
         try
         {
-            var user = await _userManager.FindByEmailAsync(request.Email);
+            var user = await _userRepository.FindByEmailAsync(request.Email);
             if (user == null)
             {
                 // Log failed password reset attempt for invalid email
@@ -37,7 +35,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             }
 
             // Reset password using the token
-            var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+            var result = await _userRepository.ResetPasswordAsync(user, request.Token, request.NewPassword);
 
             if (result.Succeeded)
             {
