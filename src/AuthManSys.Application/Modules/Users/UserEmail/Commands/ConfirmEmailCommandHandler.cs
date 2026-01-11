@@ -54,7 +54,7 @@ public class ConfirmEmailCommandHandler : IRequestHandler<ConfirmEmailCommand, C
             };
         }
 
-        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+        var errors = string.Join(", ", result.Errors);
         return new ConfirmEmailResponse
         {
             IsConfirmed = false,

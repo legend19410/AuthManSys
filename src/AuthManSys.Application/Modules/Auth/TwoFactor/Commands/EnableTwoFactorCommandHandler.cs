@@ -53,12 +53,12 @@ public class EnableTwoFactorCommandHandler : IRequestHandler<EnableTwoFactorComm
 
             var actionFailed = request.Enable ? "enable" : "disable";
             _logger.LogWarning("Failed to {Action} two-factor authentication for user {UserId}: {Errors}",
-                actionFailed, request.UserId, string.Join(", ", result.Errors.Select(e => e.Description)));
+                actionFailed, request.UserId, string.Join(", ", result.Errors));
 
             return new EnableTwoFactorResponse
             {
                 IsEnabled = !request.Enable,
-                Message = $"Failed to {actionFailed} two-factor authentication: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+                Message = $"Failed to {actionFailed} two-factor authentication: {string.Join(", ", result.Errors)}"
             };
         }
         catch (Exception ex)

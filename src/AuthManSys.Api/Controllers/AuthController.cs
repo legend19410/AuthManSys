@@ -566,7 +566,7 @@ public class AuthController : ControllerBase
 
             if (!result.Succeeded)
             {
-                _logger.LogError("Failed to create user from Google login: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                _logger.LogError("Failed to create user from Google login: {Errors}", string.Join(", ", result.Errors));
                 return BadRequest("Failed to create user account");
             }
 

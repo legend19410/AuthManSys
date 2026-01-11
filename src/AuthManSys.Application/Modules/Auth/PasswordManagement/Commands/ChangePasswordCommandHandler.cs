@@ -57,7 +57,7 @@ public class ChangePasswordCommandHandler : IRequestHandler<ChangePasswordComman
                 return new ChangePasswordResponse(true, "Password changed successfully.");
             }
 
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            var errors = string.Join(", ", result.Errors);
 
             // Log failed password change due to validation errors
             await _activityLogRepository.LogActivityAsync(

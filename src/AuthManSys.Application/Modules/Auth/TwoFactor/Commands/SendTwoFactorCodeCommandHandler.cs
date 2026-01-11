@@ -80,7 +80,7 @@ public class SendTwoFactorCodeCommandHandler : IRequestHandler<SendTwoFactorCode
             if (!result.Succeeded)
             {
                 _logger.LogError("Failed to update two-factor code for user {Username}: {Errors}",
-                    request.Username, string.Join(", ", result.Errors.Select(e => e.Description)));
+                    request.Username, string.Join(", ", result.Errors));
                 return new SendTwoFactorCodeResponse
                 {
                     IsCodeSent = false,

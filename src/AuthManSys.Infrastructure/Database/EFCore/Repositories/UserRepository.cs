@@ -27,6 +27,17 @@ public class UserRepository : IUserRepository
         _mapper = mapper;
     }
 
+    private static UserOperationResult MapIdentityResult(IdentityResult identityResult)
+    {
+        if (identityResult.Succeeded)
+        {
+            return UserOperationResult.Success();
+        }
+
+        var errors = identityResult.Errors.Select(e => e.Description);
+        return UserOperationResult.Failure(errors);
+    }
+
     public async Task<User?> GetByIdAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
@@ -103,32 +114,36 @@ public class UserRepository : IUserRepository
         return await query.CountAsync();
     }
 
-    public async Task<IdentityResult> CreateAsync(User user, string password)
+    public async Task<UserOperationResult> CreateAsync(User user, string password)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.CreateAsync(applicationUser, password);
+        var result = await _userManager.CreateAsync(applicationUser, password);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> UpdateAsync(User user)
+    public async Task<UserOperationResult> UpdateAsync(User user)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.UpdateAsync(applicationUser);
+        var result = await _userManager.UpdateAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> DeleteAsync(User user)
+    public async Task<UserOperationResult> DeleteAsync(User user)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.DeleteAsync(applicationUser);
+        var result = await _userManager.DeleteAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> SoftDeleteAsync(User user, string deletedBy)
+    public async Task<UserOperationResult> SoftDeleteAsync(User user, string deletedBy)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
         applicationUser.IsDeleted = true;
         applicationUser.DeletedAt = DateTime.UtcNow;
         applicationUser.DeletedBy = deletedBy;
 
-        return await _userManager.UpdateAsync(applicationUser);
+        var result = await _userManager.UpdateAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
     public async Task<IEnumerable<User>> SearchUsersAsync(string searchTerm, int pageNumber = 1, int pageSize = 10)
@@ -309,24 +324,27 @@ public class UserRepository : IUserRepository
         return await _userManager.GetRolesAsync(applicationUser);
     }
 
-    public async Task<IdentityResult> AddToRoleAsync(User user, string role)
+    public async Task<UserOperationResult> AddToRoleAsync(User user, string role)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.AddToRoleAsync(applicationUser, role);
+        var result = await _userManager.AddToRoleAsync(applicationUser, role);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> AddToRoleAsync(User user, string role, int? assignedBy)
+    public async Task<UserOperationResult> AddToRoleAsync(User user, string role, int? assignedBy)
     {
         // Simplified version - just add to role without tracking assignment details
         // TODO: Implement assignment tracking when we have proper DI setup
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.AddToRoleAsync(applicationUser, role);
+        var result = await _userManager.AddToRoleAsync(applicationUser, role);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> RemoveFromRoleAsync(User user, string role)
+    public async Task<UserOperationResult> RemoveFromRoleAsync(User user, string role)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.RemoveFromRoleAsync(applicationUser, role);
+        var result = await _userManager.RemoveFromRoleAsync(applicationUser, role);
+        return MapIdentityResult(result);
     }
 
     public async Task<bool> IsInRoleAsync(User user, string role)
@@ -350,7 +368,7 @@ public class UserRepository : IUserRepository
         return await _userManager.CheckPasswordAsync(applicationUser, password);
     }
 
-    public async Task<IdentityResult> ChangePasswordAsync(User user, string currentPassword, string newPassword)
+    public async Task<UserOperationResult> ChangePasswordAsync(User user, string currentPassword, string newPassword)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
         var result = await _userManager.ChangePasswordAsync(applicationUser, currentPassword, newPassword);
@@ -361,7 +379,7 @@ public class UserRepository : IUserRepository
             await _userManager.UpdateAsync(applicationUser);
         }
 
-        return result;
+        return MapIdentityResult(result);
     }
 
     // Email confirmation methods
@@ -371,11 +389,12 @@ public class UserRepository : IUserRepository
         return await _userManager.IsEmailConfirmedAsync(applicationUser);
     }
 
-    public async Task<IdentityResult> ConfirmEmailAsync(User user, string token)
+    public async Task<UserOperationResult> ConfirmEmailAsync(User user, string token)
     {
         var applicationUser = await _userManager.FindByIdAsync(user.Id);
         string decodedToken = Base64UrlEncoder.Decode(token);
-        return await _userManager.ConfirmEmailAsync(applicationUser, decodedToken);
+        var result = await _userManager.ConfirmEmailAsync(applicationUser, decodedToken);
+        return MapIdentityResult(result);
     }
 
     public async Task<string> GenerateEmailConfirmationTokenAsync(User user)
@@ -392,7 +411,7 @@ public class UserRepository : IUserRepository
         return Base64UrlEncoder.Encode(token);
     }
 
-    public async Task<IdentityResult> ResetPasswordAsync(User user, string token, string newPassword)
+    public async Task<UserOperationResult> ResetPasswordAsync(User user, string token, string newPassword)
     {
         var applicationUser = await _userManager.FindByIdAsync(user.Id);
         string decodedToken = Base64UrlEncoder.Decode(token);
@@ -410,34 +429,37 @@ public class UserRepository : IUserRepository
             }
         }
 
-        return result;
+        return MapIdentityResult(result);
     }
 
     // Two factor authentication methods
-    public async Task<IdentityResult> EnableTwoFactorAsync(User user)
+    public async Task<UserOperationResult> EnableTwoFactorAsync(User user)
     {
         var applicationUser = await _userManager.FindByIdAsync(user.Id);
         applicationUser.IsTwoFactorEnabled = true;
-        return await _userManager.UpdateAsync(applicationUser);
+        var result = await _userManager.UpdateAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> DisableTwoFactorAsync(User user)
+    public async Task<UserOperationResult> DisableTwoFactorAsync(User user)
     {
         var applicationUser = await _userManager.FindByIdAsync(user.Id);
         applicationUser.IsTwoFactorEnabled = false;
         applicationUser.TwoFactorCode = null;
         applicationUser.TwoFactorCodeExpiration = null;
         applicationUser.TwoFactorCodeGeneratedAt = null;
-        return await _userManager.UpdateAsync(applicationUser);
+        var result = await _userManager.UpdateAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> UpdateTwoFactorCodeAsync(User user, string code, DateTime expiration)
+    public async Task<UserOperationResult> UpdateTwoFactorCodeAsync(User user, string code, DateTime expiration)
     {
         var applicationUser = await _userManager.FindByIdAsync(user.Id);
         applicationUser.TwoFactorCode = code;
         applicationUser.TwoFactorCodeExpiration = expiration;
         applicationUser.TwoFactorCodeGeneratedAt = DateTime.UtcNow;
-        return await _userManager.UpdateAsync(applicationUser);
+        var result = await _userManager.UpdateAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
     // Token generation methods
@@ -475,7 +497,7 @@ public class UserRepository : IUserRepository
         return user != null ? _mapper.Map<User>(user) : null;
     }
 
-    public async Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName)
+    public async Task<UserOperationResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName)
     {
         var maxId = await GetMaxUserIdAsync();
         maxId += 1;
@@ -490,13 +512,15 @@ public class UserRepository : IUserRepository
             LockoutEnabled = true
         };
 
-        return await _userManager.CreateAsync(user, password);
+        var result = await _userManager.CreateAsync(user, password);
+        return MapIdentityResult(result);
     }
 
-    public async Task<IdentityResult> UpdateUserAsync(User user)
+    public async Task<UserOperationResult> UpdateUserAsync(User user)
     {
         var applicationUser = _mapper.Map<ApplicationUser>(user);
-        return await _userManager.UpdateAsync(applicationUser);
+        var result = await _userManager.UpdateAsync(applicationUser);
+        return MapIdentityResult(result);
     }
 
     public async Task<IList<string>> GetUserRolesAsync(User user)

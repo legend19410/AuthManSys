@@ -56,11 +56,11 @@ public class UpdateUserInformationCommandHandler : IRequestHandler<UpdateUserInf
                 };
             }
 
-            _logger.LogWarning("Failed to update user {Username}: {Errors}", request.Username, string.Join(", ", result.Errors.Select(e => e.Description)));
+            _logger.LogWarning("Failed to update user {Username}: {Errors}", request.Username, string.Join(", ", result.Errors));
             return new UpdateUserInformationResponse
             {
                 IsUpdated = false,
-                Message = $"Failed to update user: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+                Message = $"Failed to update user: {string.Join(", ", result.Errors)}"
             };
         }
         catch (Exception ex)

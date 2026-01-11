@@ -105,7 +105,7 @@ public class AuthCommands : IAuthCommands
             }
             else
             {
-                System.Console.WriteLine($"\n❌ Registration failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                System.Console.WriteLine($"\n❌ Registration failed: {string.Join(", ", result.Errors)}");
             }
         }
         catch (Exception ex)

@@ -85,11 +85,11 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, Assig
                 };
             }
 
-            _logger.LogWarning("Failed to assign role {RoleName} to user {UserId}: {Errors}", request.RoleName, request.UserId, string.Join(", ", result.Errors.Select(e => e.Description)));
+            _logger.LogWarning("Failed to assign role {RoleName} to user {UserId}: {Errors}", request.RoleName, request.UserId, string.Join(", ", result.Errors));
             return new AssignRoleResponse
             {
                 IsAssigned = false,
-                Message = $"Failed to assign role: {string.Join(", ", result.Errors.Select(e => e.Description))}",
+                Message = $"Failed to assign role: {string.Join(", ", result.Errors)}",
                 UserId = request.UserId,
                 RoleName = request.RoleName,
                 AssignedAt = null

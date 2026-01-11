@@ -85,11 +85,11 @@ public class RemoveRoleCommandHandler : IRequestHandler<RemoveRoleCommand, Remov
                 };
             }
 
-            _logger.LogWarning("Failed to remove role {RoleName} from user {UserId}: {Errors}", request.RoleName, request.UserId, string.Join(", ", result.Errors.Select(e => e.Description)));
+            _logger.LogWarning("Failed to remove role {RoleName} from user {UserId}: {Errors}", request.RoleName, request.UserId, string.Join(", ", result.Errors));
             return new RemoveRoleResponse
             {
                 IsRemoved = false,
-                Message = $"Failed to remove role: {string.Join(", ", result.Errors.Select(e => e.Description))}",
+                Message = $"Failed to remove role: {string.Join(", ", result.Errors)}",
                 UserId = request.UserId,
                 RoleName = request.RoleName,
                 RemovedAt = null

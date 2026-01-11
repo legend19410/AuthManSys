@@ -1,6 +1,5 @@
 using AuthManSys.Domain.Entities;
 using AuthManSys.Application.Common.Models;
-using Microsoft.AspNetCore.Identity;
 
 namespace AuthManSys.Application.Common.Interfaces;
 
@@ -17,34 +16,34 @@ public interface IUserRepository
     Task<IEnumerable<User>> GetAllAsync(bool includeDeleted = false);
     Task<IEnumerable<User>> GetPaginatedAsync(int pageNumber, int pageSize, bool includeDeleted = false);
     Task<int> GetTotalCountAsync(bool includeDeleted = false);
-    Task<IdentityResult> CreateAsync(User user, string password);
-    Task<IdentityResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName);
-    Task<IdentityResult> UpdateAsync(User user);
-    Task<IdentityResult> UpdateUserAsync(User user);
-    Task<IdentityResult> DeleteAsync(User user);
-    Task<IdentityResult> SoftDeleteAsync(User user, string deletedBy);
+    Task<UserOperationResult> CreateAsync(User user, string password);
+    Task<UserOperationResult> CreateUserAsync(string username, string email, string password, string firstName, string lastName);
+    Task<UserOperationResult> UpdateAsync(User user);
+    Task<UserOperationResult> UpdateUserAsync(User user);
+    Task<UserOperationResult> DeleteAsync(User user);
+    Task<UserOperationResult> SoftDeleteAsync(User user, string deletedBy);
 
     // Authentication related
     Task<bool> CheckPasswordAsync(User user, string password);
-    Task<IdentityResult> ChangePasswordAsync(User user, string currentPassword, string newPassword);
+    Task<UserOperationResult> ChangePasswordAsync(User user, string currentPassword, string newPassword);
     Task<bool> IsEmailConfirmedAsync(User user);
-    Task<IdentityResult> ConfirmEmailAsync(User user, string token);
+    Task<UserOperationResult> ConfirmEmailAsync(User user, string token);
     Task<string> GenerateEmailConfirmationTokenAsync(User user);
     Task<string> GeneratePasswordResetTokenAsync(User user);
-    Task<IdentityResult> ResetPasswordAsync(User user, string token, string newPassword);
+    Task<UserOperationResult> ResetPasswordAsync(User user, string token, string newPassword);
 
     // Role management
     Task<IList<string>> GetRolesAsync(User user);
     Task<IList<string>> GetUserRolesAsync(User user);
-    Task<IdentityResult> AddToRoleAsync(User user, string role);
-    Task<IdentityResult> AddToRoleAsync(User user, string role, int? assignedBy);
-    Task<IdentityResult> RemoveFromRoleAsync(User user, string role);
+    Task<UserOperationResult> AddToRoleAsync(User user, string role);
+    Task<UserOperationResult> AddToRoleAsync(User user, string role, int? assignedBy);
+    Task<UserOperationResult> RemoveFromRoleAsync(User user, string role);
     Task<bool> IsInRoleAsync(User user, string role);
 
     // Two-factor authentication
-    Task<IdentityResult> EnableTwoFactorAsync(User user);
-    Task<IdentityResult> DisableTwoFactorAsync(User user);
-    Task<IdentityResult> UpdateTwoFactorCodeAsync(User user, string code, DateTime expiration);
+    Task<UserOperationResult> EnableTwoFactorAsync(User user);
+    Task<UserOperationResult> DisableTwoFactorAsync(User user);
+    Task<UserOperationResult> UpdateTwoFactorCodeAsync(User user, string code, DateTime expiration);
 
     // Token management
     Task<string> GenerateUserTokenAsync(User user, string tokenProvider, string purpose);

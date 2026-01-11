@@ -49,11 +49,11 @@ public class CreateRoleCommandHandler : IRequestHandler<CreateRoleCommand, Creat
                 };
             }
 
-            _logger.LogWarning("Failed to create role {RoleName}: {Errors}", request.RoleName, string.Join(", ", result.Errors.Select(e => e.Description)));
+            _logger.LogWarning("Failed to create role {RoleName}: {Errors}", request.RoleName, string.Join(", ", result.Errors));
             return new CreateRoleResponse
             {
                 IsCreated = false,
-                Message = $"Failed to create role: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+                Message = $"Failed to create role: {string.Join(", ", result.Errors)}"
             };
         }
         catch (Exception ex)

@@ -91,11 +91,11 @@ public class GoogleTokenLoginCommandHandler : IRequestHandler<GoogleTokenLoginCo
                     metadata: new {
                         Username = username,
                         Email = googlePayload.Email,
-                        Errors = createUserResult.Errors.Select(e => e.Description).ToArray()
+                        Errors = createUserResult.Errors.ToArray()
                     },
                     cancellationToken: cancellationToken);
 
-                throw new UnauthorizedException($"Failed to create user: {string.Join(", ", createUserResult.Errors.Select(e => e.Description))}");
+                throw new UnauthorizedException($"Failed to create user: {string.Join(", ", createUserResult.Errors)}");
             }
 
             user = await _userRepository.FindByUserNameAsync(username);

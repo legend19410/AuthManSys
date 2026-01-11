@@ -50,11 +50,11 @@ public class SoftDeleteUserCommandHandler : IRequestHandler<SoftDeleteUserComman
                 };
             }
 
-            _logger.LogWarning("Failed to soft delete user {Username}: {Errors}", request.Username, string.Join(", ", result.Errors.Select(e => e.Description)));
+            _logger.LogWarning("Failed to soft delete user {Username}: {Errors}", request.Username, string.Join(", ", result.Errors));
             return new SoftDeleteUserResponse
             {
                 IsDeleted = false,
-                Message = $"Failed to delete user: {string.Join(", ", result.Errors.Select(e => e.Description))}"
+                Message = $"Failed to delete user: {string.Join(", ", result.Errors)}"
             };
         }
         catch (Exception ex)

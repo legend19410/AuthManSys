@@ -3,7 +3,7 @@ using AuthManSys.Application.Common.Interfaces;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Exceptions;
 
-namespace AuthManSys.Application.Modules.Auth.UserRegistration.Commands;
+namespace AuthManSys.Application.Modules.Users.Registration.Commands;
 
 public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, RegisterResponse>
 {
@@ -26,7 +26,7 @@ public class RegisterUserCommandHandler : IRequestHandler<RegisterUserCommand, R
 
         if (!result.Succeeded)
         {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            var errors = string.Join(", ", result.Errors);
             throw new InvalidOperationException($"Failed to create user: {errors}");
         }
 

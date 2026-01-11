@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AuthManSys.Application.Modules.Users.UserInformation.Queries;
-using AuthManSys.Application.Modules.Auth.UserRegistration.Commands;
+using AuthManSys.Application.Modules.Users.Registration.Commands;
 using AuthManSys.Application.Common.Models;
 using AuthManSys.Application.Common.Models.Responses;
 using AuthManSys.Application.Common.Interfaces;

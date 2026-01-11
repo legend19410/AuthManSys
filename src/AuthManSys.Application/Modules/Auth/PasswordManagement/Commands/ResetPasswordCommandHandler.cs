@@ -50,7 +50,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
                 return new ResetPasswordResponse(true, "Password has been reset successfully.");
             }
 
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            var errors = string.Join(", ", result.Errors);
 
             // Log failed password reset due to validation errors or invalid token
             await _activityLogRepository.LogActivityAsync(
